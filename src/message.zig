@@ -286,12 +286,61 @@ pub const MessageStream = struct {
                     }};
                     switch (msg.kind) {
                         // TODO Channel Mode Messages
-                        Message.Kind.ControlChange => return Message {
-                            .ControlChange = Message.ControlChange {
-                                .channel = msg.channel,
-                                .controller = msg.values[0],
-                                .value = value,
-                            }
+                        Message.Kind.ControlChange => switch (msg.values[0]) {
+                            120 => return Message {
+                                .AllSoundOff = Message.AllSoundOff {
+                                    .channel = msg.channel,
+                                }
+                            },
+                            121 => return Message {
+                                .ResetAllControllers = Message.ResetAllControllers {
+                                    .channel = msg.channel,
+                                    .value = value
+                                }
+                            },
+                            122 => return Message {
+                                .LocalControl = Message.LocalControl {
+                                    .channel = msg.channel,
+                                    .on = switch (value) {
+                                        0 => false,
+                                        127 => true,
+                                        else => return error.InvalidMessage,
+                                    },
+                                }
+                            },
+                            123 => return Message {
+                                .AllNotesOff = Message.AllNotesOff {
+                                    .channel = msg.channel,
+                                }
+                            },
+                            124 => return Message {
+                                .OmniModeOff = Message.OmniModeOff {
+                                    .channel = msg.channel,
+                                }
+                            },
+                            125 => return Message {
+                                .OmniModeOn = Message.OmniModeOn {
+                                    .channel = msg.channel,
+                                }
+                            },
+                            126 => return Message {
+                                .MonoModeOn = Message.MonoModeOn {
+                                    .channel = msg.channel,
+                                    .value = value
+                                }
+                            },
+                            127 => return Message {
+                                .PolyModeOn = Message.PolyModeOn {
+                                    .channel = msg.channel,
+                                }
+                            },
+                            else => return Message {
+                                .ControlChange = Message.ControlChange {
+                                    .channel = msg.channel,
+                                    .controller = msg.values[0],
+                                    .value = value,
+                                }
+                            },
                         },
                         Message.Kind.NoteOff => return Message {
                             .NoteOff = Message.NoteOff {
@@ -591,7 +640,7 @@ test "midi.message.MessageStream: PolyphonicKeyPressure" {
 test "midi.message.MessageStream: ControlChange" {
     testMessageStream(
         "\xB0\x00\x00" ++
-        "\xBF\x7F\x7F",
+        "\xBF\x77\x7F",
         []Message{
             Message{ .ControlChange = Message.ControlChange{
                 .channel = 0x0,
@@ -600,8 +649,134 @@ test "midi.message.MessageStream: ControlChange" {
             }},
             Message{ .ControlChange = Message.ControlChange{
                 .channel = 0xF,
-                .controller = 0x7F,
+                .controller = 0x77,
                 .value = 0x7F,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: AllSoundOff" {
+    testMessageStream(
+        "\xB0\x78\x00" ++
+        "\xBF\x78\x00",
+        []Message{
+            Message{ .AllSoundOff = Message.AllSoundOff{
+                .channel = 0x0,
+            }},
+            Message{ .AllSoundOff = Message.AllSoundOff{
+                .channel = 0xF,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: ResetAllControllers" {
+    testMessageStream(
+        "\xB0\x79\x00" ++
+        "\xBF\x79\x7F",
+        []Message{
+            Message{ .ResetAllControllers = Message.ResetAllControllers{
+                .channel = 0x0,
+                .value = 0x0,
+            }},
+            Message{ .ResetAllControllers = Message.ResetAllControllers{
+                .channel = 0xF,
+                .value = 0x7F,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: LocalControl" {
+    testMessageStream(
+        "\xB0\x7A\x00" ++
+        "\xBF\x7A\x7F",
+        []Message{
+            Message{ .LocalControl = Message.LocalControl{
+                .channel = 0x0,
+                .on = false,
+            }},
+            Message{ .LocalControl = Message.LocalControl{
+                .channel = 0xF,
+                .on = true,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: AllNotesOff" {
+    testMessageStream(
+        "\xB0\x7B\x00" ++
+        "\xBF\x7B\x00",
+        []Message{
+            Message{ .AllNotesOff = Message.AllNotesOff{
+                .channel = 0x0,
+            }},
+            Message{ .AllNotesOff = Message.AllNotesOff{
+                .channel = 0xF,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: OmniModeOff" {
+    testMessageStream(
+        "\xB0\x7C\x00" ++
+        "\xBF\x7C\x00",
+        []Message{
+            Message{ .OmniModeOff = Message.OmniModeOff{
+                .channel = 0x0,
+            }},
+            Message{ .OmniModeOff = Message.OmniModeOff{
+                .channel = 0xF,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: OmniModeOn" {
+    testMessageStream(
+        "\xB0\x7D\x00" ++
+        "\xBF\x7D\x00",
+        []Message{
+            Message{ .OmniModeOn = Message.OmniModeOn{
+                .channel = 0x0,
+            }},
+            Message{ .OmniModeOn = Message.OmniModeOn{
+                .channel = 0xF,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: MonoModeOn" {
+    testMessageStream(
+        "\xB0\x7E\x00" ++
+        "\xBF\x7E\x7F",
+        []Message{
+            Message{ .MonoModeOn = Message.MonoModeOn{
+                .channel = 0x0,
+                .value = 0x00,
+            }},
+            Message{ .MonoModeOn = Message.MonoModeOn{
+                .channel = 0xF,
+                .value = 0x7F,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: PolyModeOn" {
+    testMessageStream(
+        "\xB0\x7F\x00" ++
+        "\xBF\x7F\x00",
+        []Message{
+            Message{ .PolyModeOn = Message.PolyModeOn{
+                .channel = 0x0,
+            }},
+            Message{ .PolyModeOn = Message.PolyModeOn{
+                .channel = 0xF,
             }},
         }
     );
@@ -656,4 +831,61 @@ test "midi.message.MessageStream: PitchBendChange" {
             }},
         }
     );
+}
+
+test "midi.message.MessageStream: SystemExclusive" {
+    testMessageStream(
+        "\xE0\x00\x00" ++
+        "\xEF\x7F\x7F",
+        []Message{
+            Message{ .PitchBendChange = Message.PitchBendChange{
+                .channel = 0x0,
+                .bend = 0x00,
+            }},
+            Message{ .PitchBendChange = Message.PitchBendChange{
+                .channel = 0xF,
+                .bend = 0x3FFF,
+            }},
+        }
+    );
+}
+
+test "midi.message.MessageStream: MIDITimeCodeQuarterFrame" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: SongPositionPointer" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: SongSelect" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: TuneRequest" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: TimingClock" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: Start" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: Continue" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: Stop" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: ActiveSensing" {
+    return error.SkipZigTest;
+}
+
+test "midi.message.MessageStream: Reset" {
+    return error.SkipZigTest;
 }
