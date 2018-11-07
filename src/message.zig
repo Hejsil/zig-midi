@@ -285,7 +285,6 @@ pub const MessageStream = struct {
                         .values = []u7{},
                     }};
                     switch (msg.kind) {
-                        // TODO Channel Mode Messages
                         Message.Kind.ControlChange => switch (msg.values[0]) {
                             120 => return Message {
                                 .AllSoundOff = Message.AllSoundOff {
