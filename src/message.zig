@@ -176,14 +176,14 @@ pub const MessageStream = struct {
             return struct {
                 kind: Message.Kind,
                 channel: u4,
-                values: [count]u7
+                values: [count]u7,
             };
         }
 
         fn SystemMessage(comptime count: usize) type {
             return struct {
                 kind: Message.Kind,
-                values: [count]u7
+                values: [count]u7,
             };
         }
     };
@@ -217,9 +217,12 @@ pub const MessageStream = struct {
                         switch (kind) {
                             Message.Kind.SystemExclusiveStart => blk: {
                                 stream.state = State.SystemExclusive;
-                                return Message{.SystemExclusiveStart = {}};
+                                return Message{ .SystemExclusiveStart = {} };
                             },
-                            Message.Kind.MidiTimeCodeQuarterFrame, Message.Kind.SongPositionPointer, Message.Kind.SongSelect, => {
+                            Message.Kind.MidiTimeCodeQuarterFrame,
+                            Message.Kind.SongPositionPointer,
+                            Message.Kind.SongSelect,
+                            => {
                                 stream.state = State{
                                     .SystemValue1 = State.SystemMessage(0){
                                         .kind = kind,
@@ -230,13 +233,13 @@ pub const MessageStream = struct {
                             },
 
                             Message.Kind.SystemExclusiveEnd => return error.InvalidMessage,
-                            Message.Kind.TuneRequest => return Message{.TuneRequest = {}},
-                            Message.Kind.TimingClock => return Message{.TimingClock = {}},
-                            Message.Kind.Start => return Message{.Start = {}},
-                            Message.Kind.Continue => return Message{.Continue = {}},
-                            Message.Kind.Stop => return Message{.Stop = {}},
-                            Message.Kind.ActiveSensing => return Message{.ActiveSensing = {}},
-                            Message.Kind.Reset => return Message{.Reset = {}},
+                            Message.Kind.TuneRequest => return Message{ .TuneRequest = {} },
+                            Message.Kind.TimingClock => return Message{ .TimingClock = {} },
+                            Message.Kind.Start => return Message{ .Start = {} },
+                            Message.Kind.Continue => return Message{ .Continue = {} },
+                            Message.Kind.Stop => return Message{ .Stop = {} },
+                            Message.Kind.ActiveSensing => return Message{ .ActiveSensing = {} },
+                            Message.Kind.Reset => return Message{ .Reset = {} },
                             else => unreachable,
                         }
                     }
@@ -249,29 +252,34 @@ pub const MessageStream = struct {
                 State.ChannelValue1 => |msg| {
                     const value = math.cast(u7, b) catch return error.InvalidMessage;
 
-                    stream.state = State { .Running = msg };
+                    stream.state = State{ .Running = msg };
                     switch (msg.kind) {
-                        Message.Kind.NoteOff, Message.Kind.NoteOn, Message.Kind.PolyphonicKeyPressure, Message.Kind.PitchBendChange, Message.Kind.ControlChange, => {
-                            stream.state = State {
+                        Message.Kind.NoteOff,
+                        Message.Kind.NoteOn,
+                        Message.Kind.PolyphonicKeyPressure,
+                        Message.Kind.PitchBendChange,
+                        Message.Kind.ControlChange,
+                        => {
+                            stream.state = State{
                                 .ChannelValue2 = State.ChannelMessage(1){
                                     .kind = msg.kind,
                                     .channel = msg.channel,
                                     .values = []u7{value},
-                                }
+                                },
                             };
                             return null;
                         },
-                        Message.Kind.ProgramChange => return Message {
-                            .ProgramChange = Message.ProgramChange {
+                        Message.Kind.ProgramChange => return Message{
+                            .ProgramChange = Message.ProgramChange{
                                 .channel = msg.channel,
                                 .program = value,
-                            }
+                            },
                         },
-                        Message.Kind.ChannelPressure => return Message {
-                            .ChannelPressure = Message.ChannelPressure {
+                        Message.Kind.ChannelPressure => return Message{
+                            .ChannelPressure = Message.ChannelPressure{
                                 .channel = msg.channel,
                                 .pressure = value,
-                            }
+                            },
                         },
                         else => unreachable,
                     }
@@ -279,94 +287,86 @@ pub const MessageStream = struct {
                 State.ChannelValue2 => |msg| {
                     const value = math.cast(u7, b) catch return error.InvalidMessage;
 
-                    stream.state = State{ .Running = State.ChannelMessage(0){
-                        .channel = msg.channel,
-                        .kind = msg.kind,
-                        .values = []u7{},
-                    }};
+                    stream.state = State{
+                        .Running = State.ChannelMessage(0){
+                            .channel = msg.channel,
+                            .kind = msg.kind,
+                            .values = []u7{},
+                        },
+                    };
                     switch (msg.kind) {
                         Message.Kind.ControlChange => switch (msg.values[0]) {
-                            120 => return Message {
-                                .AllSoundOff = Message.AllSoundOff {
-                                    .channel = msg.channel,
-                                }
+                            120 => return Message{
+                                .AllSoundOff = Message.AllSoundOff{ .channel = msg.channel },
                             },
-                            121 => return Message {
-                                .ResetAllControllers = Message.ResetAllControllers {
+                            121 => return Message{
+                                .ResetAllControllers = Message.ResetAllControllers{
                                     .channel = msg.channel,
-                                    .value = value
-                                }
+                                    .value = value,
+                                },
                             },
-                            122 => return Message {
-                                .LocalControl = Message.LocalControl {
+                            122 => return Message{
+                                .LocalControl = Message.LocalControl{
                                     .channel = msg.channel,
                                     .on = switch (value) {
                                         0 => false,
                                         127 => true,
                                         else => return error.InvalidMessage,
                                     },
-                                }
+                                },
                             },
-                            123 => return Message {
-                                .AllNotesOff = Message.AllNotesOff {
+                            123 => return Message{
+                                .AllNotesOff = Message.AllNotesOff{ .channel = msg.channel },
+                            },
+                            124 => return Message{
+                                .OmniModeOff = Message.OmniModeOff{ .channel = msg.channel },
+                            },
+                            125 => return Message{
+                                .OmniModeOn = Message.OmniModeOn{ .channel = msg.channel },
+                            },
+                            126 => return Message{
+                                .MonoModeOn = Message.MonoModeOn{
                                     .channel = msg.channel,
-                                }
+                                    .value = value,
+                                },
                             },
-                            124 => return Message {
-                                .OmniModeOff = Message.OmniModeOff {
-                                    .channel = msg.channel,
-                                }
+                            127 => return Message{
+                                .PolyModeOn = Message.PolyModeOn{ .channel = msg.channel },
                             },
-                            125 => return Message {
-                                .OmniModeOn = Message.OmniModeOn {
-                                    .channel = msg.channel,
-                                }
-                            },
-                            126 => return Message {
-                                .MonoModeOn = Message.MonoModeOn {
-                                    .channel = msg.channel,
-                                    .value = value
-                                }
-                            },
-                            127 => return Message {
-                                .PolyModeOn = Message.PolyModeOn {
-                                    .channel = msg.channel,
-                                }
-                            },
-                            else => return Message {
-                                .ControlChange = Message.ControlChange {
+                            else => return Message{
+                                .ControlChange = Message.ControlChange{
                                     .channel = msg.channel,
                                     .controller = msg.values[0],
                                     .value = value,
-                                }
+                                },
                             },
                         },
-                        Message.Kind.NoteOff => return Message {
-                            .NoteOff = Message.NoteOff {
+                        Message.Kind.NoteOff => return Message{
+                            .NoteOff = Message.NoteOff{
                                 .channel = msg.channel,
                                 .note = msg.values[0],
                                 .velocity = value,
-                            }
+                            },
                         },
-                        Message.Kind.NoteOn => return Message {
-                            .NoteOn = Message.NoteOn {
+                        Message.Kind.NoteOn => return Message{
+                            .NoteOn = Message.NoteOn{
                                 .channel = msg.channel,
                                 .note = msg.values[0],
                                 .velocity = value,
-                            }
+                            },
                         },
-                        Message.Kind.PolyphonicKeyPressure => return Message {
-                            .PolyphonicKeyPressure = Message.PolyphonicKeyPressure {
+                        Message.Kind.PolyphonicKeyPressure => return Message{
+                            .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
                                 .channel = msg.channel,
                                 .note = msg.values[0],
                                 .pressure = value,
-                            }
+                            },
                         },
-                        Message.Kind.PitchBendChange => return Message {
-                            .PitchBendChange = Message.PitchBendChange {
+                        Message.Kind.PitchBendChange => return Message{
+                            .PitchBendChange = Message.PitchBendChange{
                                 .channel = msg.channel,
                                 .bend = u14(msg.values[0]) | u14(value) << 7,
-                            }
+                            },
                         },
                         else => unreachable,
                     }
@@ -393,9 +393,7 @@ pub const MessageStream = struct {
                             },
                         },
                         Message.Kind.SongSelect => return Message{
-                            .SongSelect = Message.SongSelect{
-                                .sequence = value,
-                            },
+                            .SongSelect = Message.SongSelect{ .sequence = value },
                         },
                         else => unreachable,
                     }
@@ -406,9 +404,7 @@ pub const MessageStream = struct {
                     stream.state = State.Status;
                     switch (msg.kind) {
                         Message.Kind.SongPositionPointer => return Message{
-                            .SongPositionPointer = Message.SongPositionPointer{
-                                .beats = u14(msg.values[0]) | u14(value) << 7
-                            },
+                            .SongPositionPointer = Message.SongPositionPointer{ .beats = u14(msg.values[0]) | u14(value) << 7 },
                         },
                         else => unreachable,
                     }
@@ -430,9 +426,8 @@ pub const MessageStream = struct {
                     }
 
                     stream.state = State.Status;
-                    return Message{.SystemExclusiveEnd={}};
+                    return Message{ .SystemExclusiveEnd = {} };
                 },
-
             }
         }
     }
@@ -580,273 +575,269 @@ fn testMessageStream(bytes: []const u8, results: []const Message) void {
 }
 
 test "midi.message.MessageStream: NoteOff" {
-    testMessageStream(
-        "\x80\x00\x00" ++
-        "\x8F\x7F\x7F",
-        []Message{
-            Message{ .NoteOff = Message.NoteOff{
+    testMessageStream("\x80\x00\x00" ++
+        "\x8F\x7F\x7F", []Message{
+        Message{
+            .NoteOff = Message.NoteOff{
                 .channel = 0x0,
                 .note = 0x00,
                 .velocity = 0x00,
-            }},
-            Message{ .NoteOff = Message.NoteOff{
+            },
+        },
+        Message{
+            .NoteOff = Message.NoteOff{
                 .channel = 0xF,
                 .note = 0x7F,
                 .velocity = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: NoteOn" {
-    testMessageStream(
-        "\x90\x00\x00" ++
-        "\x9F\x7F\x7F",
-        []Message{
-            Message{ .NoteOn = Message.NoteOn{
+    testMessageStream("\x90\x00\x00" ++
+        "\x9F\x7F\x7F", []Message{
+        Message{
+            .NoteOn = Message.NoteOn{
                 .channel = 0x0,
                 .note = 0x00,
                 .velocity = 0x00,
-            }},
-            Message{ .NoteOn = Message.NoteOn{
+            },
+        },
+        Message{
+            .NoteOn = Message.NoteOn{
                 .channel = 0xF,
                 .note = 0x7F,
                 .velocity = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: PolyphonicKeyPressure" {
-    testMessageStream(
-        "\xA0\x00\x00" ++
-        "\xAF\x7F\x7F",
-        []Message{
-            Message{ .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
+    testMessageStream("\xA0\x00\x00" ++
+        "\xAF\x7F\x7F", []Message{
+        Message{
+            .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
                 .channel = 0x0,
                 .note = 0x00,
                 .pressure = 0x00,
-            }},
-            Message{ .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
+            },
+        },
+        Message{
+            .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
                 .channel = 0xF,
                 .note = 0x7F,
                 .pressure = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: ControlChange" {
-    testMessageStream(
-        "\xB0\x00\x00" ++
-        "\xBF\x77\x7F",
-        []Message{
-            Message{ .ControlChange = Message.ControlChange{
+    testMessageStream("\xB0\x00\x00" ++
+        "\xBF\x77\x7F", []Message{
+        Message{
+            .ControlChange = Message.ControlChange{
                 .channel = 0x0,
                 .controller = 0x0,
                 .value = 0x0,
-            }},
-            Message{ .ControlChange = Message.ControlChange{
+            },
+        },
+        Message{
+            .ControlChange = Message.ControlChange{
                 .channel = 0xF,
                 .controller = 0x77,
                 .value = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: AllSoundOff" {
-    testMessageStream(
-        "\xB0\x78\x00" ++
-        "\xBF\x78\x00",
-        []Message{
-            Message{ .AllSoundOff = Message.AllSoundOff{
-                .channel = 0x0,
-            }},
-            Message{ .AllSoundOff = Message.AllSoundOff{
-                .channel = 0xF,
-            }},
-        }
-    );
+    testMessageStream("\xB0\x78\x00" ++
+        "\xBF\x78\x00", []Message{
+        Message{
+            .AllSoundOff = Message.AllSoundOff{ .channel = 0x0 },
+        },
+        Message{
+            .AllSoundOff = Message.AllSoundOff{ .channel = 0xF },
+        },
+    });
 }
 
 test "midi.message.MessageStream: ResetAllControllers" {
-    testMessageStream(
-        "\xB0\x79\x00" ++
-        "\xBF\x79\x7F",
-        []Message{
-            Message{ .ResetAllControllers = Message.ResetAllControllers{
+    testMessageStream("\xB0\x79\x00" ++
+        "\xBF\x79\x7F", []Message{
+        Message{
+            .ResetAllControllers = Message.ResetAllControllers{
                 .channel = 0x0,
                 .value = 0x0,
-            }},
-            Message{ .ResetAllControllers = Message.ResetAllControllers{
+            },
+        },
+        Message{
+            .ResetAllControllers = Message.ResetAllControllers{
                 .channel = 0xF,
                 .value = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: LocalControl" {
-    testMessageStream(
-        "\xB0\x7A\x00" ++
-        "\xBF\x7A\x7F",
-        []Message{
-            Message{ .LocalControl = Message.LocalControl{
+    testMessageStream("\xB0\x7A\x00" ++
+        "\xBF\x7A\x7F", []Message{
+        Message{
+            .LocalControl = Message.LocalControl{
                 .channel = 0x0,
                 .on = false,
-            }},
-            Message{ .LocalControl = Message.LocalControl{
+            },
+        },
+        Message{
+            .LocalControl = Message.LocalControl{
                 .channel = 0xF,
                 .on = true,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: AllNotesOff" {
-    testMessageStream(
-        "\xB0\x7B\x00" ++
-        "\xBF\x7B\x00",
-        []Message{
-            Message{ .AllNotesOff = Message.AllNotesOff{
-                .channel = 0x0,
-            }},
-            Message{ .AllNotesOff = Message.AllNotesOff{
-                .channel = 0xF,
-            }},
-        }
-    );
+    testMessageStream("\xB0\x7B\x00" ++
+        "\xBF\x7B\x00", []Message{
+        Message{
+            .AllNotesOff = Message.AllNotesOff{ .channel = 0x0 },
+        },
+        Message{
+            .AllNotesOff = Message.AllNotesOff{ .channel = 0xF },
+        },
+    });
 }
 
 test "midi.message.MessageStream: OmniModeOff" {
-    testMessageStream(
-        "\xB0\x7C\x00" ++
-        "\xBF\x7C\x00",
-        []Message{
-            Message{ .OmniModeOff = Message.OmniModeOff{
-                .channel = 0x0,
-            }},
-            Message{ .OmniModeOff = Message.OmniModeOff{
-                .channel = 0xF,
-            }},
-        }
-    );
+    testMessageStream("\xB0\x7C\x00" ++
+        "\xBF\x7C\x00", []Message{
+        Message{
+            .OmniModeOff = Message.OmniModeOff{ .channel = 0x0 },
+        },
+        Message{
+            .OmniModeOff = Message.OmniModeOff{ .channel = 0xF },
+        },
+    });
 }
 
 test "midi.message.MessageStream: OmniModeOn" {
-    testMessageStream(
-        "\xB0\x7D\x00" ++
-        "\xBF\x7D\x00",
-        []Message{
-            Message{ .OmniModeOn = Message.OmniModeOn{
-                .channel = 0x0,
-            }},
-            Message{ .OmniModeOn = Message.OmniModeOn{
-                .channel = 0xF,
-            }},
-        }
-    );
+    testMessageStream("\xB0\x7D\x00" ++
+        "\xBF\x7D\x00", []Message{
+        Message{
+            .OmniModeOn = Message.OmniModeOn{ .channel = 0x0 },
+        },
+        Message{
+            .OmniModeOn = Message.OmniModeOn{ .channel = 0xF },
+        },
+    });
 }
 
 test "midi.message.MessageStream: MonoModeOn" {
-    testMessageStream(
-        "\xB0\x7E\x00" ++
-        "\xBF\x7E\x7F",
-        []Message{
-            Message{ .MonoModeOn = Message.MonoModeOn{
+    testMessageStream("\xB0\x7E\x00" ++
+        "\xBF\x7E\x7F", []Message{
+        Message{
+            .MonoModeOn = Message.MonoModeOn{
                 .channel = 0x0,
                 .value = 0x00,
-            }},
-            Message{ .MonoModeOn = Message.MonoModeOn{
+            },
+        },
+        Message{
+            .MonoModeOn = Message.MonoModeOn{
                 .channel = 0xF,
                 .value = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: PolyModeOn" {
-    testMessageStream(
-        "\xB0\x7F\x00" ++
-        "\xBF\x7F\x00",
-        []Message{
-            Message{ .PolyModeOn = Message.PolyModeOn{
-                .channel = 0x0,
-            }},
-            Message{ .PolyModeOn = Message.PolyModeOn{
-                .channel = 0xF,
-            }},
-        }
-    );
+    testMessageStream("\xB0\x7F\x00" ++
+        "\xBF\x7F\x00", []Message{
+        Message{
+            .PolyModeOn = Message.PolyModeOn{ .channel = 0x0 },
+        },
+        Message{
+            .PolyModeOn = Message.PolyModeOn{ .channel = 0xF },
+        },
+    });
 }
 
 test "midi.message.MessageStream: ProgramChange" {
-    testMessageStream(
-        "\xC0\x00" ++
-        "\xCF\x7F",
-        []Message{
-            Message{ .ProgramChange = Message.ProgramChange{
+    testMessageStream("\xC0\x00" ++
+        "\xCF\x7F", []Message{
+        Message{
+            .ProgramChange = Message.ProgramChange{
                 .channel = 0x0,
                 .program = 0x00,
-            }},
-            Message{ .ProgramChange = Message.ProgramChange{
+            },
+        },
+        Message{
+            .ProgramChange = Message.ProgramChange{
                 .channel = 0xF,
                 .program = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: ChannelPressure" {
-    testMessageStream(
-        "\xD0\x00" ++
-        "\xDF\x7F",
-        []Message{
-            Message{ .ChannelPressure = Message.ChannelPressure{
+    testMessageStream("\xD0\x00" ++
+        "\xDF\x7F", []Message{
+        Message{
+            .ChannelPressure = Message.ChannelPressure{
                 .channel = 0x0,
                 .pressure = 0x00,
-            }},
-            Message{ .ChannelPressure = Message.ChannelPressure{
+            },
+        },
+        Message{
+            .ChannelPressure = Message.ChannelPressure{
                 .channel = 0xF,
                 .pressure = 0x7F,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: PitchBendChange" {
-    testMessageStream(
-        "\xE0\x00\x00" ++
-        "\xEF\x7F\x7F",
-        []Message{
-            Message{ .PitchBendChange = Message.PitchBendChange{
+    testMessageStream("\xE0\x00\x00" ++
+        "\xEF\x7F\x7F", []Message{
+        Message{
+            .PitchBendChange = Message.PitchBendChange{
                 .channel = 0x0,
                 .bend = 0x00,
-            }},
-            Message{ .PitchBendChange = Message.PitchBendChange{
+            },
+        },
+        Message{
+            .PitchBendChange = Message.PitchBendChange{
                 .channel = 0xF,
                 .bend = 0x3FFF,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: SystemExclusive" {
-    testMessageStream(
-        "\xE0\x00\x00" ++
-        "\xEF\x7F\x7F",
-        []Message{
-            Message{ .PitchBendChange = Message.PitchBendChange{
+    testMessageStream("\xE0\x00\x00" ++
+        "\xEF\x7F\x7F", []Message{
+        Message{
+            .PitchBendChange = Message.PitchBendChange{
                 .channel = 0x0,
                 .bend = 0x00,
-            }},
-            Message{ .PitchBendChange = Message.PitchBendChange{
+            },
+        },
+        Message{
+            .PitchBendChange = Message.PitchBendChange{
                 .channel = 0xF,
                 .bend = 0x3FFF,
-            }},
-        }
-    );
+            },
+        },
+    });
 }
 
 test "midi.message.MessageStream: MIDITimeCodeQuarterFrame" {
