@@ -1,10 +1,11 @@
 const std = @import("std");
-const mem = std.mem;
-const math = std.math;
+
 const debug = std.debug;
+const math = std.math;
+const mem = std.mem;
 
 const channelMessageTable = blk: {
-    var res = []?Message.Kind{null} ** (@maxValue(u4) + 1);
+    var res = []?Message.Kind{null} ** (math.maxInt(u4) + 1);
     res[0b1000] = Message.Kind.NoteOff;
     res[0b1001] = Message.Kind.NoteOn;
     res[0b1010] = Message.Kind.PolyphonicKeyPressure;
@@ -16,7 +17,7 @@ const channelMessageTable = blk: {
 };
 
 const systemMessageTable = blk: {
-    var res = []?Message.Kind{null} ** (@maxValue(u4) + 1);
+    var res = []?Message.Kind{null} ** (math.maxInt(u4) + 1);
     res[0b0000] = Message.Kind.SystemExclusiveStart;
     res[0b0001] = Message.Kind.MidiTimeCodeQuarterFrame;
     res[0b0010] = Message.Kind.SongPositionPointer;
