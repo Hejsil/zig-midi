@@ -1,3 +1,9 @@
+pub const decode = @import("decode.zig");
+
+test "midi" {
+    _ = decode;
+}
+
 pub const Message = union(enum) {
     NoteOff: NoteOff,
     NoteOn: NoteOn,
