@@ -1,8 +1,12 @@
 const std = @import("std");
+const midi = @import("index.zig");
 
 const debug = std.debug;
 const math = std.math;
 const mem = std.mem;
+
+const Message = midi.Message;
+const Chunk = midi.Chunk;
 
 const channel_message_table = blk: {
     var res = []?Message.Kind{null} ** (math.maxInt(u4) + 1);
@@ -32,132 +36,6 @@ const system_message_table = blk: {
     res[0b1110] = Message.Kind.ActiveSensing;
     res[0b1111] = Message.Kind.Reset;
     break :blk res;
-};
-
-pub const Message = union(enum) {
-    NoteOff: NoteOff,
-    NoteOn: NoteOn,
-    PolyphonicKeyPressure: PolyphonicKeyPressure,
-    ControlChange: ControlChange,
-    AllSoundOff: AllSoundOff,
-    ResetAllControllers: ResetAllControllers,
-    LocalControl: LocalControl,
-    AllNotesOff: AllNotesOff,
-    OmniModeOff: OmniModeOff,
-    OmniModeOn: OmniModeOn,
-    MonoModeOn: MonoModeOn,
-    PolyModeOn: PolyModeOn,
-    ProgramChange: ProgramChange,
-    ChannelPressure: ChannelPressure,
-    PitchBendChange: PitchBendChange,
-
-    SystemExclusive: SystemExclusive,
-    SystemExclusiveStart: SystemExclusiveStart,
-    SystemExclusiveEnd: SystemExclusiveEnd,
-    MidiTimeCodeQuarterFrame: MidiTimeCodeQuarterFrame,
-    SongPositionPointer: SongPositionPointer,
-    SongSelect: SongSelect,
-    TuneRequest: TuneRequest,
-    TimingClock: TimingClock,
-    Start: Start,
-    Continue: Continue,
-    Stop: Stop,
-    ActiveSensing: ActiveSensing,
-    Reset: Reset,
-
-    pub const Kind = @TagType(Message);
-
-    pub const NoteOff = Note;
-    pub const NoteOn = Note;
-
-    pub const PolyphonicKeyPressure = struct {
-        channel: u4,
-        note: u7,
-        pressure: u7,
-    };
-
-    pub const ControlChange = struct {
-        channel: u4,
-        controller: u7,
-        value: u7,
-    };
-
-    pub const AllSoundOff = ChannelMessage;
-
-    pub const ResetAllControllers = struct {
-        channel: u4,
-        value: u7,
-    };
-
-    pub const LocalControl = struct {
-        channel: u4,
-        on: bool,
-    };
-
-    pub const AllNotesOff = ChannelMessage;
-    pub const OmniModeOff = ChannelMessage;
-    pub const OmniModeOn = ChannelMessage;
-
-    pub const MonoModeOn = struct {
-        channel: u4,
-        value: u7,
-    };
-
-    pub const PolyModeOn = ChannelMessage;
-
-    pub const ProgramChange = struct {
-        channel: u4,
-        program: u7,
-    };
-
-    pub const ChannelPressure = struct {
-        channel: u4,
-        pressure: u7,
-    };
-
-    pub const PitchBendChange = struct {
-        channel: u4,
-        bend: u14,
-    };
-
-    pub const SystemExclusive = struct {
-        id: []u7,
-        message: []u7,
-    };
-
-    pub const SystemExclusiveStart = void;
-    pub const SystemExclusiveEnd = void;
-
-    pub const MidiTimeCodeQuarterFrame = struct {
-        message_type: u3,
-        values: u4,
-    };
-
-    pub const SongPositionPointer = struct {
-        beats: u14,
-    };
-
-    pub const SongSelect = struct {
-        sequence: u7,
-    };
-
-    pub const TuneRequest = void;
-    pub const TimingClock = void;
-    pub const Start = void;
-    pub const Continue = void;
-    pub const Stop = void;
-    pub const ActiveSensing = void;
-    pub const Reset = void;
-
-    const Note = struct {
-        channel: u4,
-        note: u7,
-        velocity: u7,
-    };
-
-    const ChannelMessage = struct {
-        channel: u4,
-    };
 };
 
 pub const MessageStream = struct {
@@ -582,7 +460,7 @@ fn messageEql(a: Message, b: Message) bool {
     }
 }
 
-fn testMessageStream(bytes: []const u8, results: []const Message) !void {
+fn testMessageIterator(bytes: []const u8, results: []const Message) !void {
     var next_message: usize = 0;
     var iter = MessageIterator.init(bytes);
     while (try iter.next()) |actual| : (next_message += 1) {
@@ -594,8 +472,8 @@ fn testMessageStream(bytes: []const u8, results: []const Message) !void {
     debug.assert((try iter.next()) == null);
 }
 
-test "midi.message.MessageStream: NoteOff" {
-    try testMessageStream("\x80\x00\x00" ++
+test "midi.decode.MessageStream: NoteOff" {
+    try testMessageIterator("\x80\x00\x00" ++
         "\x7F\x7F" ++
         "\x8F\x7F\x7F", []Message{
         Message{
@@ -622,8 +500,8 @@ test "midi.message.MessageStream: NoteOff" {
     });
 }
 
-test "midi.message.MessageStream: NoteOn" {
-    try testMessageStream("\x90\x00\x00" ++
+test "midi.decode.MessageStream: NoteOn" {
+    try testMessageIterator("\x90\x00\x00" ++
         "\x7F\x7F" ++
         "\x9F\x7F\x7F", []Message{
         Message{
@@ -650,8 +528,8 @@ test "midi.message.MessageStream: NoteOn" {
     });
 }
 
-test "midi.message.MessageStream: PolyphonicKeyPressure" {
-    try testMessageStream("\xA0\x00\x00" ++
+test "midi.decode.MessageStream: PolyphonicKeyPressure" {
+    try testMessageIterator("\xA0\x00\x00" ++
         "\x7F\x7F" ++
         "\xAF\x7F\x7F", []Message{
         Message{
@@ -678,8 +556,8 @@ test "midi.message.MessageStream: PolyphonicKeyPressure" {
     });
 }
 
-test "midi.message.MessageStream: ControlChange" {
-    try testMessageStream("\xB0\x00\x00" ++
+test "midi.decode.MessageStream: ControlChange" {
+    try testMessageIterator("\xB0\x00\x00" ++
         "\x77\x7F" ++
         "\xBF\x77\x7F", []Message{
         Message{
@@ -706,8 +584,8 @@ test "midi.message.MessageStream: ControlChange" {
     });
 }
 
-test "midi.message.MessageStream: AllSoundOff" {
-    try testMessageStream("\xB0\x78\x00" ++
+test "midi.decode.MessageStream: AllSoundOff" {
+    try testMessageIterator("\xB0\x78\x00" ++
         "\x78\x00" ++
         "\xBF\x78\x00", []Message{
         Message{ .AllSoundOff = Message.AllSoundOff{ .channel = 0x0 } },
@@ -716,8 +594,8 @@ test "midi.message.MessageStream: AllSoundOff" {
     });
 }
 
-test "midi.message.MessageStream: ResetAllControllers" {
-    try testMessageStream("\xB0\x79\x00" ++
+test "midi.decode.MessageStream: ResetAllControllers" {
+    try testMessageIterator("\xB0\x79\x00" ++
         "\x79\x7F" ++
         "\xBF\x79\x7F", []Message{
         Message{
@@ -741,8 +619,8 @@ test "midi.message.MessageStream: ResetAllControllers" {
     });
 }
 
-test "midi.message.MessageStream: LocalControl" {
-    try testMessageStream("\xB0\x7A\x00" ++
+test "midi.decode.MessageStream: LocalControl" {
+    try testMessageIterator("\xB0\x7A\x00" ++
         "\x7A\x7F" ++
         "\xBF\x7A\x7F", []Message{
         Message{
@@ -766,8 +644,8 @@ test "midi.message.MessageStream: LocalControl" {
     });
 }
 
-test "midi.message.MessageStream: AllNotesOff" {
-    try testMessageStream("\xB0\x7B\x00" ++
+test "midi.decode.MessageStream: AllNotesOff" {
+    try testMessageIterator("\xB0\x7B\x00" ++
         "\x7B\x00" ++
         "\xBF\x7B\x00", []Message{
         Message{ .AllNotesOff = Message.AllNotesOff{ .channel = 0x0 } },
@@ -776,8 +654,8 @@ test "midi.message.MessageStream: AllNotesOff" {
     });
 }
 
-test "midi.message.MessageStream: OmniModeOff" {
-    try testMessageStream("\xB0\x7C\x00" ++
+test "midi.decode.MessageStream: OmniModeOff" {
+    try testMessageIterator("\xB0\x7C\x00" ++
         "\x7C\x00" ++
         "\xBF\x7C\x00", []Message{
         Message{ .OmniModeOff = Message.OmniModeOff{ .channel = 0x0 } },
@@ -786,8 +664,8 @@ test "midi.message.MessageStream: OmniModeOff" {
     });
 }
 
-test "midi.message.MessageStream: OmniModeOn" {
-    try testMessageStream("\xB0\x7D\x00" ++
+test "midi.decode.MessageStream: OmniModeOn" {
+    try testMessageIterator("\xB0\x7D\x00" ++
         "\x7D\x00" ++
         "\xBF\x7D\x00", []Message{
         Message{ .OmniModeOn = Message.OmniModeOn{ .channel = 0x0 } },
@@ -796,8 +674,8 @@ test "midi.message.MessageStream: OmniModeOn" {
     });
 }
 
-test "midi.message.MessageStream: MonoModeOn" {
-    try testMessageStream("\xB0\x7E\x00" ++
+test "midi.decode.MessageStream: MonoModeOn" {
+    try testMessageIterator("\xB0\x7E\x00" ++
         "\x7E\x7F" ++
         "\xBF\x7E\x7F", []Message{
         Message{
@@ -821,8 +699,8 @@ test "midi.message.MessageStream: MonoModeOn" {
     });
 }
 
-test "midi.message.MessageStream: PolyModeOn" {
-    try testMessageStream("\xB0\x7F\x00" ++
+test "midi.decode.MessageStream: PolyModeOn" {
+    try testMessageIterator("\xB0\x7F\x00" ++
         "\x7F\x00" ++
         "\xBF\x7F\x00", []Message{
         Message{ .PolyModeOn = Message.PolyModeOn{ .channel = 0x0 } },
@@ -831,8 +709,8 @@ test "midi.message.MessageStream: PolyModeOn" {
     });
 }
 
-test "midi.message.MessageStream: ProgramChange" {
-    try testMessageStream("\xC0\x00" ++
+test "midi.decode.MessageStream: ProgramChange" {
+    try testMessageIterator("\xC0\x00" ++
         "\x7F" ++
         "\xCF\x7F", []Message{
         Message{
@@ -856,8 +734,8 @@ test "midi.message.MessageStream: ProgramChange" {
     });
 }
 
-test "midi.message.MessageStream: ChannelPressure" {
-    try testMessageStream("\xD0\x00" ++
+test "midi.decode.MessageStream: ChannelPressure" {
+    try testMessageIterator("\xD0\x00" ++
         "\x7F" ++
         "\xDF\x7F", []Message{
         Message{
@@ -881,8 +759,8 @@ test "midi.message.MessageStream: ChannelPressure" {
     });
 }
 
-test "midi.message.MessageStream: PitchBendChange" {
-    try testMessageStream("\xE0\x00\x00" ++
+test "midi.decode.MessageStream: PitchBendChange" {
+    try testMessageIterator("\xE0\x00\x00" ++
         "\x7F\x7F" ++
         "\xEF\x7F\x7F", []Message{
         Message{
@@ -906,15 +784,15 @@ test "midi.message.MessageStream: PitchBendChange" {
     });
 }
 
-test "midi.message.MessageStream: SystemExclusive" {
-    try testMessageStream("\xF0\x01\x0F\x7F\xF7", []Message{
+test "midi.decode.MessageStream: SystemExclusive" {
+    try testMessageIterator("\xF0\x01\x0F\x7F\xF7", []Message{
         Message{ .SystemExclusiveStart = {} },
         Message{ .SystemExclusiveEnd = {} },
     });
 }
 
-test "midi.message.MessageStream: MIDITimeCodeQuarterFrame" {
-    try testMessageStream("\xF1\x00" ++
+test "midi.decode.MessageStream: MIDITimeCodeQuarterFrame" {
+    try testMessageIterator("\xF1\x00" ++
         "\xF1\x0F" ++
         "\xF1\x70" ++
         "\xF1\x7F", []Message{
@@ -945,67 +823,276 @@ test "midi.message.MessageStream: MIDITimeCodeQuarterFrame" {
     });
 }
 
-test "midi.message.MessageStream: SongPositionPointer" {
-    try testMessageStream("\xF2\x00\x00" ++
+test "midi.decode.MessageStream: SongPositionPointer" {
+    try testMessageIterator("\xF2\x00\x00" ++
         "\xF2\x7F\x7F", []Message{
         Message{ .SongPositionPointer = Message.SongPositionPointer{ .beats = 0x0 } },
         Message{ .SongPositionPointer = Message.SongPositionPointer{ .beats = 0x7F << 7 | 0x7F } },
     });
 }
 
-test "midi.message.MessageStream: SongSelect" {
-    try testMessageStream("\xF3\x00" ++
+test "midi.decode.MessageStream: SongSelect" {
+    try testMessageIterator("\xF3\x00" ++
         "\xF3\x7F", []Message{
         Message{ .SongSelect = Message.SongSelect{ .sequence = 0x0 } },
         Message{ .SongSelect = Message.SongSelect{ .sequence = 0x7F } },
     });
 }
 
-test "midi.message.MessageStream: TuneRequest" {
-    try testMessageStream("\xF6\xF6", []Message{
+test "midi.decode.MessageStream: TuneRequest" {
+    try testMessageIterator("\xF6\xF6", []Message{
         Message{ .TuneRequest = {} },
         Message{ .TuneRequest = {} },
     });
 }
 
-test "midi.message.MessageStream: TimingClock" {
-    try testMessageStream("\xF8\xF8", []Message{
+test "midi.decode.MessageStream: TimingClock" {
+    try testMessageIterator("\xF8\xF8", []Message{
         Message{ .TimingClock = {} },
         Message{ .TimingClock = {} },
     });
 }
 
-test "midi.message.MessageStream: Start" {
-    try testMessageStream("\xFA\xFA", []Message{
+test "midi.decode.MessageStream: Start" {
+    try testMessageIterator("\xFA\xFA", []Message{
         Message{ .Start = {} },
         Message{ .Start = {} },
     });
 }
 
-test "midi.message.MessageStream: Continue" {
-    try testMessageStream("\xFB\xFB", []Message{
+test "midi.decode.MessageStream: Continue" {
+    try testMessageIterator("\xFB\xFB", []Message{
         Message{ .Continue = {} },
         Message{ .Continue = {} },
     });
 }
 
-test "midi.message.MessageStream: Stop" {
-    try testMessageStream("\xFC\xFC", []Message{
+test "midi.decode.MessageStream: Stop" {
+    try testMessageIterator("\xFC\xFC", []Message{
         Message{ .Stop = {} },
         Message{ .Stop = {} },
     });
 }
 
-test "midi.message.MessageStream: ActiveSensing" {
-    try testMessageStream("\xFE\xFE", []Message{
+test "midi.decode.MessageStream: ActiveSensing" {
+    try testMessageIterator("\xFE\xFE", []Message{
         Message{ .ActiveSensing = {} },
         Message{ .ActiveSensing = {} },
     });
 }
 
-test "midi.message.MessageStream: Reset" {
-    try testMessageStream("\xFF\xFF", []Message{
+test "midi.decode.MessageStream: Reset" {
+    try testMessageIterator("\xFF\xFF", []Message{
         Message{ .Reset = {} },
         Message{ .Reset = {} },
+    });
+}
+
+pub const ChunkStream = struct {
+    const State = union(enum) {
+        ChunkKind1: [0]u8,
+        ChunkKind2: [1]u8,
+        ChunkKind3: [2]u8,
+        ChunkKind4: [3]u8,
+
+        ChunkLength1: ChunkLength(0),
+        ChunkLength2: ChunkLength(1),
+        ChunkLength3: ChunkLength(2),
+        ChunkLength4: ChunkLength(3),
+
+        pub fn ChunkLength(comptime len: usize) type {
+            return struct {
+                kind: [4]u8,
+                len: [len]u8,
+            };
+        }
+    };
+
+    state: State,
+
+    pub fn init() ChunkStream {
+        return ChunkStream{ .state = State{ .ChunkKind1 = []u8{} } };
+    }
+
+    pub fn feed(stream: *ChunkStream, b: u8) ?Chunk {
+        switch (stream.state) {
+            State.ChunkKind1 => |_| {
+                stream.state = State{ .ChunkKind2 = []u8{b} };
+                return null;
+            },
+            State.ChunkKind2 => |kind| {
+                stream.state = State{ .ChunkKind3 = []u8{
+                    kind[0],
+                    b,
+                } };
+                return null;
+            },
+            State.ChunkKind3 => |kind| {
+                stream.state = State{ .ChunkKind4 = []u8{
+                    kind[0],
+                    kind[1],
+                    b,
+                } };
+                return null;
+            },
+            State.ChunkKind4 => |kind| {
+                stream.state = State{
+                    .ChunkLength1 = State.ChunkLength(0){
+                        .kind = []u8{
+                            kind[0],
+                            kind[1],
+                            kind[2],
+                            b,
+                        },
+                        .len = []u8{},
+                    },
+                };
+                return null;
+            },
+            State.ChunkLength1 => |len| {
+                stream.state = State{
+                    .ChunkLength2 = State.ChunkLength(1){
+                        .kind = len.kind,
+                        .len = []u8{b},
+                    },
+                };
+                return null;
+            },
+            State.ChunkLength2 => |len| {
+                stream.state = State{
+                    .ChunkLength3 = State.ChunkLength(2){
+                        .kind = len.kind,
+                        .len = []u8{
+                            len.len[0],
+                            b,
+                        },
+                    },
+                };
+                return null;
+            },
+            State.ChunkLength3 => |len| {
+                stream.state = State{
+                    .ChunkLength4 = State.ChunkLength(3){
+                        .kind = len.kind,
+                        .len = []u8{
+                            len.len[0],
+                            len.len[1],
+                            b,
+                        },
+                    },
+                };
+                return null;
+            },
+            State.ChunkLength4 => |len| {
+                const chunk = Chunk{
+                    .kind = len.kind,
+                    .len = mem.readIntBig(u32, &[]u8{
+                        len.len[0],
+                        len.len[1],
+                        len.len[2],
+                        b,
+                    }),
+                };
+                stream.state = State{ .ChunkKind1 = []u8{} };
+                return chunk;
+            },
+        }
+    }
+
+    pub fn done(stream: ChunkStream) !void {
+        switch (stream.state) {
+            State.ChunkKind1 => return,
+            State.ChunkKind2,
+            State.ChunkKind3,
+            State.ChunkKind4,
+            State.ChunkLength1,
+            State.ChunkLength2,
+            State.ChunkLength3,
+            State.ChunkLength4,
+            => return error.IncompleteChunk,
+        }
+    }
+};
+
+pub const ChunkIterator = struct {
+    stream: ChunkStream,
+    bytes: []const u8,
+    i: usize,
+
+    pub fn init(bytes: []const u8) ChunkIterator {
+        return ChunkIterator{
+            .stream = ChunkStream.init(),
+            .bytes = bytes,
+            .i = 0,
+        };
+    }
+
+    pub fn next(iter: *ChunkIterator) !?Chunk {
+        while (iter.i < iter.bytes.len) {
+            defer iter.i += 1;
+            if (iter.stream.feed(iter.bytes[iter.i])) |chunk|
+                return chunk;
+        }
+
+        try iter.stream.done();
+        return null;
+    }
+
+    pub fn chunkBytes(iter: *ChunkIterator, chunk: Chunk) ![]const u8 {
+        const start = iter.i;
+        const end = iter.i + chunk.len;
+        if (iter.bytes.len < end)
+            return error.OutOfBounds;
+
+        defer iter.i += chunk.len;
+        return iter.bytes[start..end];
+    }
+};
+
+fn chunkEql(a: Chunk, b: Chunk) bool {
+    if (!mem.eql(u8, a.kind, b.kind))
+        return false;
+    return a.len == b.len;
+}
+
+const TestChunk = struct {
+    chunk: Chunk,
+    data: []const u8,
+};
+
+fn testChunkIterator(bytes: []const u8, results: []const TestChunk) !void {
+    var next_chunk: usize = 0;
+    var iter = ChunkIterator.init(bytes);
+    while (try iter.next()) |actual| : (next_chunk += 1) {
+        const actual_data = try iter.chunkBytes(actual);
+
+        const expected = results[next_chunk];
+        debug.assert(chunkEql(expected.chunk, actual));
+        debug.assert(mem.eql(u8, expected.data, actual_data));
+    }
+
+    debug.assert(next_chunk == results.len);
+    debug.assert((try iter.next()) == null);
+}
+
+test "midi.decode.ChunkIterator" {
+    try testChunkIterator("abcd\x00\x00\x00\x04" ++
+        "data" ++
+        "efgh\x00\x00\x00\x05" ++
+        "data2", []TestChunk{
+        TestChunk{
+            .chunk = Chunk{
+                .kind = "abcd",
+                .len = 4,
+            },
+            .data = "data",
+        },
+        TestChunk{
+            .chunk = Chunk{
+                .kind = "efgh",
+                .len = 5,
+            },
+            .data = "data2",
+        },
     });
 }
