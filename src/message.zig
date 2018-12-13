@@ -4,7 +4,7 @@ const debug = std.debug;
 const math = std.math;
 const mem = std.mem;
 
-const channelMessageTable = blk: {
+const channel_message_table = blk: {
     var res = []?Message.Kind{null} ** (math.maxInt(u4) + 1);
     res[0b1000] = Message.Kind.NoteOff;
     res[0b1001] = Message.Kind.NoteOn;
@@ -16,7 +16,7 @@ const channelMessageTable = blk: {
     break :blk res;
 };
 
-const systemMessageTable = blk: {
+const system_message_table = blk: {
     var res = []?Message.Kind{null} ** (math.maxInt(u4) + 1);
     res[0b0000] = Message.Kind.SystemExclusiveStart;
     res[0b0001] = Message.Kind.MidiTimeCodeQuarterFrame;
@@ -129,7 +129,7 @@ pub const Message = union(enum) {
     pub const SystemExclusiveEnd = void;
 
     pub const MidiTimeCodeQuarterFrame = struct {
-        messageType: u3,
+        message_type: u3,
         values: u4,
     };
 
@@ -201,7 +201,7 @@ pub const MessageStream = struct {
                 State.Status => {
                     const upper = @truncate(u4, b >> 4);
                     const lower = @truncate(u4, b);
-                    if (channelMessageTable[upper]) |kind| {
+                    if (channel_message_table[upper]) |kind| {
                         stream.state = State{
                             .ChannelValue1 = State.ChannelMessage(0){
                                 .kind = kind,
@@ -214,7 +214,7 @@ pub const MessageStream = struct {
 
                     if (upper != 0b1111)
                         return error.InvalidMessage;
-                    if (systemMessageTable[lower]) |kind| {
+                    if (system_message_table[lower]) |kind| {
                         switch (kind) {
                             Message.Kind.SystemExclusiveStart => blk: {
                                 stream.state = State.SystemExclusive;
@@ -389,7 +389,7 @@ pub const MessageStream = struct {
                         },
                         Message.Kind.MidiTimeCodeQuarterFrame => return Message{
                             .MidiTimeCodeQuarterFrame = Message.MidiTimeCodeQuarterFrame{
-                                .messageType = @intCast(u3, value >> 4),
+                                .message_type = @intCast(u3, value >> 4),
                                 .values = @truncate(u4, value),
                             },
                         },
@@ -421,7 +421,7 @@ pub const MessageStream = struct {
                         return null;
                     if (upper != 0b1111)
                         return error.InvalidMessage;
-                    if (systemMessageTable[lower]) |kind| {
+                    if (system_message_table[lower]) |kind| {
                         if (kind != Message.Kind.SystemExclusiveEnd)
                             return error.InvalidMessage;
                     }
@@ -536,7 +536,7 @@ fn messageEql(a: Message, b: Message) bool {
         Message.Kind.SystemExclusiveEnd => return true,
         Message.Kind.MidiTimeCodeQuarterFrame => |av| {
             const bv = b.MidiTimeCodeQuarterFrame;
-            return av.messageType == bv.messageType and
+            return av.message_type == bv.message_type and
                 av.values == bv.values;
         },
         Message.Kind.SongPositionPointer => |av| {
@@ -577,12 +577,20 @@ fn testMessageStream(bytes: []const u8, results: []const Message) void {
 
 test "midi.message.MessageStream: NoteOff" {
     testMessageStream("\x80\x00\x00" ++
+        "\x7F\x7F" ++
         "\x8F\x7F\x7F", []Message{
         Message{
             .NoteOff = Message.NoteOff{
                 .channel = 0x0,
                 .note = 0x00,
                 .velocity = 0x00,
+            },
+        },
+        Message{
+            .NoteOff = Message.NoteOff{
+                .channel = 0x0,
+                .note = 0x7F,
+                .velocity = 0x7F,
             },
         },
         Message{
@@ -597,12 +605,20 @@ test "midi.message.MessageStream: NoteOff" {
 
 test "midi.message.MessageStream: NoteOn" {
     testMessageStream("\x90\x00\x00" ++
+        "\x7F\x7F" ++
         "\x9F\x7F\x7F", []Message{
         Message{
             .NoteOn = Message.NoteOn{
                 .channel = 0x0,
                 .note = 0x00,
                 .velocity = 0x00,
+            },
+        },
+        Message{
+            .NoteOn = Message.NoteOn{
+                .channel = 0x0,
+                .note = 0x7F,
+                .velocity = 0x7F,
             },
         },
         Message{
@@ -617,12 +633,20 @@ test "midi.message.MessageStream: NoteOn" {
 
 test "midi.message.MessageStream: PolyphonicKeyPressure" {
     testMessageStream("\xA0\x00\x00" ++
+        "\x7F\x7F" ++
         "\xAF\x7F\x7F", []Message{
         Message{
             .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
                 .channel = 0x0,
                 .note = 0x00,
                 .pressure = 0x00,
+            },
+        },
+        Message{
+            .PolyphonicKeyPressure = Message.PolyphonicKeyPressure{
+                .channel = 0x0,
+                .note = 0x7F,
+                .pressure = 0x7F,
             },
         },
         Message{
@@ -637,12 +661,20 @@ test "midi.message.MessageStream: PolyphonicKeyPressure" {
 
 test "midi.message.MessageStream: ControlChange" {
     testMessageStream("\xB0\x00\x00" ++
+        "\x77\x7F" ++
         "\xBF\x77\x7F", []Message{
         Message{
             .ControlChange = Message.ControlChange{
                 .channel = 0x0,
                 .controller = 0x0,
                 .value = 0x0,
+            },
+        },
+        Message{
+            .ControlChange = Message.ControlChange{
+                .channel = 0x0,
+                .controller = 0x77,
+                .value = 0x7F,
             },
         },
         Message{
@@ -657,23 +689,28 @@ test "midi.message.MessageStream: ControlChange" {
 
 test "midi.message.MessageStream: AllSoundOff" {
     testMessageStream("\xB0\x78\x00" ++
+        "\x78\x00" ++
         "\xBF\x78\x00", []Message{
-        Message{
-            .AllSoundOff = Message.AllSoundOff{ .channel = 0x0 },
-        },
-        Message{
-            .AllSoundOff = Message.AllSoundOff{ .channel = 0xF },
-        },
+        Message{ .AllSoundOff = Message.AllSoundOff{ .channel = 0x0 } },
+        Message{ .AllSoundOff = Message.AllSoundOff{ .channel = 0x0 } },
+        Message{ .AllSoundOff = Message.AllSoundOff{ .channel = 0xF } },
     });
 }
 
 test "midi.message.MessageStream: ResetAllControllers" {
     testMessageStream("\xB0\x79\x00" ++
+        "\x79\x7F" ++
         "\xBF\x79\x7F", []Message{
         Message{
             .ResetAllControllers = Message.ResetAllControllers{
                 .channel = 0x0,
                 .value = 0x0,
+            },
+        },
+        Message{
+            .ResetAllControllers = Message.ResetAllControllers{
+                .channel = 0x0,
+                .value = 0x7F,
             },
         },
         Message{
@@ -687,11 +724,18 @@ test "midi.message.MessageStream: ResetAllControllers" {
 
 test "midi.message.MessageStream: LocalControl" {
     testMessageStream("\xB0\x7A\x00" ++
+        "\x7A\x7F" ++
         "\xBF\x7A\x7F", []Message{
         Message{
             .LocalControl = Message.LocalControl{
                 .channel = 0x0,
                 .on = false,
+            },
+        },
+        Message{
+            .LocalControl = Message.LocalControl{
+                .channel = 0x0,
+                .on = true,
             },
         },
         Message{
@@ -705,47 +749,48 @@ test "midi.message.MessageStream: LocalControl" {
 
 test "midi.message.MessageStream: AllNotesOff" {
     testMessageStream("\xB0\x7B\x00" ++
+        "\x7B\x00" ++
         "\xBF\x7B\x00", []Message{
-        Message{
-            .AllNotesOff = Message.AllNotesOff{ .channel = 0x0 },
-        },
-        Message{
-            .AllNotesOff = Message.AllNotesOff{ .channel = 0xF },
-        },
+        Message{ .AllNotesOff = Message.AllNotesOff{ .channel = 0x0 } },
+        Message{ .AllNotesOff = Message.AllNotesOff{ .channel = 0x0 } },
+        Message{ .AllNotesOff = Message.AllNotesOff{ .channel = 0xF } },
     });
 }
 
 test "midi.message.MessageStream: OmniModeOff" {
     testMessageStream("\xB0\x7C\x00" ++
+        "\x7C\x00" ++
         "\xBF\x7C\x00", []Message{
-        Message{
-            .OmniModeOff = Message.OmniModeOff{ .channel = 0x0 },
-        },
-        Message{
-            .OmniModeOff = Message.OmniModeOff{ .channel = 0xF },
-        },
+        Message{ .OmniModeOff = Message.OmniModeOff{ .channel = 0x0 } },
+        Message{ .OmniModeOff = Message.OmniModeOff{ .channel = 0x0 } },
+        Message{ .OmniModeOff = Message.OmniModeOff{ .channel = 0xF } },
     });
 }
 
 test "midi.message.MessageStream: OmniModeOn" {
     testMessageStream("\xB0\x7D\x00" ++
+        "\x7D\x00" ++
         "\xBF\x7D\x00", []Message{
-        Message{
-            .OmniModeOn = Message.OmniModeOn{ .channel = 0x0 },
-        },
-        Message{
-            .OmniModeOn = Message.OmniModeOn{ .channel = 0xF },
-        },
+        Message{ .OmniModeOn = Message.OmniModeOn{ .channel = 0x0 } },
+        Message{ .OmniModeOn = Message.OmniModeOn{ .channel = 0x0 } },
+        Message{ .OmniModeOn = Message.OmniModeOn{ .channel = 0xF } },
     });
 }
 
 test "midi.message.MessageStream: MonoModeOn" {
     testMessageStream("\xB0\x7E\x00" ++
+        "\x7E\x7F" ++
         "\xBF\x7E\x7F", []Message{
         Message{
             .MonoModeOn = Message.MonoModeOn{
                 .channel = 0x0,
                 .value = 0x00,
+            },
+        },
+        Message{
+            .MonoModeOn = Message.MonoModeOn{
+                .channel = 0x0,
+                .value = 0x7F,
             },
         },
         Message{
@@ -759,23 +804,28 @@ test "midi.message.MessageStream: MonoModeOn" {
 
 test "midi.message.MessageStream: PolyModeOn" {
     testMessageStream("\xB0\x7F\x00" ++
+        "\x7F\x00" ++
         "\xBF\x7F\x00", []Message{
-        Message{
-            .PolyModeOn = Message.PolyModeOn{ .channel = 0x0 },
-        },
-        Message{
-            .PolyModeOn = Message.PolyModeOn{ .channel = 0xF },
-        },
+        Message{ .PolyModeOn = Message.PolyModeOn{ .channel = 0x0 } },
+        Message{ .PolyModeOn = Message.PolyModeOn{ .channel = 0x0 } },
+        Message{ .PolyModeOn = Message.PolyModeOn{ .channel = 0xF } },
     });
 }
 
 test "midi.message.MessageStream: ProgramChange" {
     testMessageStream("\xC0\x00" ++
+        "\x7F" ++
         "\xCF\x7F", []Message{
         Message{
             .ProgramChange = Message.ProgramChange{
                 .channel = 0x0,
                 .program = 0x00,
+            },
+        },
+        Message{
+            .ProgramChange = Message.ProgramChange{
+                .channel = 0x0,
+                .program = 0x7F,
             },
         },
         Message{
@@ -789,11 +839,18 @@ test "midi.message.MessageStream: ProgramChange" {
 
 test "midi.message.MessageStream: ChannelPressure" {
     testMessageStream("\xD0\x00" ++
+        "\x7F" ++
         "\xDF\x7F", []Message{
         Message{
             .ChannelPressure = Message.ChannelPressure{
                 .channel = 0x0,
                 .pressure = 0x00,
+            },
+        },
+        Message{
+            .ChannelPressure = Message.ChannelPressure{
+                .channel = 0x0,
+                .pressure = 0x7F,
             },
         },
         Message{
@@ -807,6 +864,7 @@ test "midi.message.MessageStream: ChannelPressure" {
 
 test "midi.message.MessageStream: PitchBendChange" {
     testMessageStream("\xE0\x00\x00" ++
+        "\x7F\x7F" ++
         "\xEF\x7F\x7F", []Message{
         Message{
             .PitchBendChange = Message.PitchBendChange{
@@ -816,67 +874,119 @@ test "midi.message.MessageStream: PitchBendChange" {
         },
         Message{
             .PitchBendChange = Message.PitchBendChange{
+                .channel = 0x0,
+                .bend = 0x7F << 7 | 0x7F,
+            },
+        },
+        Message{
+            .PitchBendChange = Message.PitchBendChange{
                 .channel = 0xF,
-                .bend = 0x3FFF,
+                .bend = 0x7F << 7 | 0x7F,
             },
         },
     });
 }
 
 test "midi.message.MessageStream: SystemExclusive" {
-    testMessageStream("\xE0\x00\x00" ++
-        "\xEF\x7F\x7F", []Message{
+    testMessageStream("\xF0\x01\x0F\x7F\xF7", []Message{
+        Message{ .SystemExclusiveStart = {} },
+        Message{ .SystemExclusiveEnd = {} },
+    });
+}
+
+test "midi.message.MessageStream: MIDITimeCodeQuarterFrame" {
+    testMessageStream("\xF1\x00" ++
+        "\xF1\x0F" ++
+        "\xF1\x70" ++
+        "\xF1\x7F", []Message{
         Message{
-            .PitchBendChange = Message.PitchBendChange{
-                .channel = 0x0,
-                .bend = 0x00,
+            .MidiTimeCodeQuarterFrame = Message.MidiTimeCodeQuarterFrame{
+                .message_type = 0,
+                .values = 0,
             },
         },
         Message{
-            .PitchBendChange = Message.PitchBendChange{
-                .channel = 0xF,
-                .bend = 0x3FFF,
+            .MidiTimeCodeQuarterFrame = Message.MidiTimeCodeQuarterFrame{
+                .message_type = 0,
+                .values = 0xF,
+            },
+        },
+        Message{
+            .MidiTimeCodeQuarterFrame = Message.MidiTimeCodeQuarterFrame{
+                .message_type = 0x7,
+                .values = 0x0,
+            },
+        },
+        Message{
+            .MidiTimeCodeQuarterFrame = Message.MidiTimeCodeQuarterFrame{
+                .message_type = 0x7,
+                .values = 0xF,
             },
         },
     });
 }
 
-test "midi.message.MessageStream: MIDITimeCodeQuarterFrame" {
-    return error.SkipZigTest;
-}
-
 test "midi.message.MessageStream: SongPositionPointer" {
-    return error.SkipZigTest;
+    testMessageStream("\xF2\x00\x00" ++
+        "\xF2\x7F\x7F", []Message{
+        Message{ .SongPositionPointer = Message.SongPositionPointer{ .beats = 0x0 } },
+        Message{ .SongPositionPointer = Message.SongPositionPointer{ .beats = 0x7F << 7 | 0x7F } },
+    });
 }
 
 test "midi.message.MessageStream: SongSelect" {
-    return error.SkipZigTest;
+    testMessageStream("\xF3\x00" ++
+        "\xF3\x7F", []Message{
+        Message{ .SongSelect = Message.SongSelect{ .sequence = 0x0 } },
+        Message{ .SongSelect = Message.SongSelect{ .sequence = 0x7F } },
+    });
 }
 
 test "midi.message.MessageStream: TuneRequest" {
-    return error.SkipZigTest;
+    testMessageStream("\xF6\xF6", []Message{
+        Message{ .TuneRequest = {} },
+        Message{ .TuneRequest = {} },
+    });
 }
 
 test "midi.message.MessageStream: TimingClock" {
-    return error.SkipZigTest;
+    testMessageStream("\xF8\xF8", []Message{
+        Message{ .TimingClock = {} },
+        Message{ .TimingClock = {} },
+    });
 }
 
 test "midi.message.MessageStream: Start" {
-    return error.SkipZigTest;
+    testMessageStream("\xFA\xFA", []Message{
+        Message{ .Start = {} },
+        Message{ .Start = {} },
+    });
 }
 
 test "midi.message.MessageStream: Continue" {
-    return error.SkipZigTest;
+    testMessageStream("\xFB\xFB", []Message{
+        Message{ .Continue = {} },
+        Message{ .Continue = {} },
+    });
 }
 
 test "midi.message.MessageStream: Stop" {
-    return error.SkipZigTest;
+    testMessageStream("\xFC\xFC", []Message{
+        Message{ .Stop = {} },
+        Message{ .Stop = {} },
+    });
 }
 
 test "midi.message.MessageStream: ActiveSensing" {
-    return error.SkipZigTest;
+    testMessageStream("\xFE\xFE", []Message{
+        Message{ .ActiveSensing = {} },
+        Message{ .ActiveSensing = {} },
+    });
 }
 
 test "midi.message.MessageStream: Reset" {
-    return error.SkipZigTest;
+    testMessageStream("\xFF\xFF", []Message{
+        Message{ .Reset = {} },
+        Message{ .Reset = {} },
+    });
 }
