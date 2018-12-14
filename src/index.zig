@@ -3,9 +3,11 @@ const std = @import("std");
 const mem = std.mem;
 
 pub const decode = @import("decode.zig");
+pub const file = @import("file.zig");
 
 test "midi" {
     _ = decode;
+    _ = file;
 }
 
 pub const Message = union(enum) {
@@ -241,27 +243,5 @@ pub const Message = union(enum) {
             Message.Kind.ActiveSensing => return true,
             Message.Kind.Reset => return true,
         }
-    }
-};
-
-pub const ChunkHeader = struct {
-    kind: [4]u8,
-    len: u32,
-
-    fn equal(a: ChunkHeader, b: ChunkHeader) bool {
-        if (!mem.eql(u8, a.kind, b.kind))
-            return false;
-        return a.len == b.len;
-    }
-};
-
-pub const Chunk = struct {
-    header: ChunkHeader,
-    data: []const u8,
-
-    fn equal(a: Chunk, b: Chunk) bool {
-        if (!mem.eql(u8, a.data, b.data))
-            return false;
-        return a.header.equal(b.header);
     }
 };

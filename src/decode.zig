@@ -351,12 +351,122 @@ pub const MessageIterator = struct {
     }
 };
 
+fn messageEql(a: Message, b: Message) bool {
+    if (Message.Kind(a) != Message.Kind(b))
+        return false;
+
+    switch (a) {
+        Message.Kind.NoteOff => |av| {
+            const bv = b.NoteOff;
+            return av.channel == bv.channel and
+                av.note == bv.note and
+                av.velocity == bv.velocity;
+        },
+        Message.Kind.NoteOn => |av| {
+            const bv = b.NoteOn;
+            return av.channel == bv.channel and
+                av.note == bv.note and
+                av.velocity == bv.velocity;
+        },
+        Message.Kind.PolyphonicKeyPressure => |av| {
+            const bv = b.PolyphonicKeyPressure;
+            return av.channel == bv.channel and
+                av.note == bv.note and
+                av.pressure == bv.pressure;
+        },
+        Message.Kind.ControlChange => |av| {
+            const bv = b.ControlChange;
+            return av.channel == bv.channel and
+                av.controller == bv.controller and
+                av.value == bv.value;
+        },
+        Message.Kind.AllSoundOff => |av| {
+            const bv = b.AllSoundOff;
+            return av.channel == bv.channel;
+        },
+        Message.Kind.ResetAllControllers => |av| {
+            const bv = b.ResetAllControllers;
+            return av.channel == bv.channel and
+                av.value == bv.value;
+        },
+        Message.Kind.LocalControl => |av| {
+            const bv = b.LocalControl;
+            return av.channel == bv.channel and
+                av.on == bv.on;
+        },
+        Message.Kind.AllNotesOff => |av| {
+            const bv = b.AllNotesOff;
+            return av.channel == bv.channel;
+        },
+        Message.Kind.OmniModeOff => |av| {
+            const bv = b.OmniModeOff;
+            return av.channel == bv.channel;
+        },
+        Message.Kind.OmniModeOn => |av| {
+            const bv = b.OmniModeOn;
+            return av.channel == bv.channel;
+        },
+        Message.Kind.MonoModeOn => |av| {
+            const bv = b.MonoModeOn;
+            return av.channel == bv.channel and
+                av.value == bv.value;
+        },
+        Message.Kind.PolyModeOn => |av| {
+            const bv = b.PolyModeOn;
+            return av.channel == bv.channel;
+        },
+        Message.Kind.ProgramChange => |av| {
+            const bv = b.ProgramChange;
+            return av.channel == bv.channel and
+                av.program == bv.program;
+        },
+        Message.Kind.ChannelPressure => |av| {
+            const bv = b.ChannelPressure;
+            return av.channel == bv.channel and
+                av.pressure == bv.pressure;
+        },
+        Message.Kind.PitchBendChange => |av| {
+            const bv = b.PitchBendChange;
+            return av.channel == bv.channel and
+                av.bend == bv.bend;
+        },
+
+        Message.Kind.SystemExclusive => |av| {
+            const bv = b.SystemExclusive;
+            return std.mem.eql(u7, av.id, bv.id) and
+                std.mem.eql(u7, av.message, bv.message);
+        },
+        Message.Kind.SystemExclusiveStart => return true,
+        Message.Kind.SystemExclusiveEnd => return true,
+        Message.Kind.MidiTimeCodeQuarterFrame => |av| {
+            const bv = b.MidiTimeCodeQuarterFrame;
+            return av.message_type == bv.message_type and
+                av.values == bv.values;
+        },
+        Message.Kind.SongPositionPointer => |av| {
+            const bv = b.SongPositionPointer;
+            return av.beats == bv.beats;
+        },
+        Message.Kind.SongSelect => |av| {
+            const bv = b.SongSelect;
+            return av.sequence == bv.sequence;
+        },
+        Message.Kind.TuneRequest => return true,
+        Message.Kind.TimingClock => return true,
+        Message.Kind.Start => return true,
+        Message.Kind.Continue => return true,
+        Message.Kind.Stop => return true,
+        Message.Kind.ActiveSensing => return true,
+        Message.Kind.Reset => return true,
+    }
+}
+
 fn testMessageIterator(bytes: []const u8, results: []const Message) !void {
     var next_message: usize = 0;
     var iter = MessageIterator.init(bytes);
     while (try iter.next()) |actual| : (next_message += 1) {
         const expected = results[next_message];
-        debug.assert(expected.equal(actual));
+        debug.assert(messageEql(expected, actual));
     }
 
     debug.assert(next_message == results.len);
@@ -779,30 +889,11 @@ test "midi.decode.MessageStream: Reset" {
     });
 }
 
-pub fn chunkHeader(bytes: [8]u8) ChunkHeader {
+fn chunkHeader(bytes: *const [8]u8) ChunkHeader {
     return ChunkHeader{
         .kind = @ptrCast(*const [4]u8, bytes[0..4].ptr).*,
         .len = mem.readIntBig(u32, @ptrCast(*const [4]u8, bytes[4..8].ptr)),
     };
-}
-
-test "decode.chunkHeader" {
-    debug.assert(chunkHeader("abcd\x00\x00\x00\x04").equal(ChunkHeader{
-        .kind = "abcd",
-        .len = 0x04,
-    }));
-    debug.assert(chunkHeader("efgh\x00\x00\x04\x00").equal(ChunkHeader{
-        .kind = "efgh",
-        .len = 0x0400,
-    }));
-    debug.assert(chunkHeader("ijkl\x00\x04\x00\x00").equal(ChunkHeader{
-        .kind = "ijkl",
-        .len = 0x040000,
-    }));
-    debug.assert(chunkHeader("mnop\x04\x00\x00\x00").equal(ChunkHeader{
-        .kind = "mnop",
-        .len = 0x04000000,
-    }));
 }
 
 pub const ChunkIterator = struct {
@@ -822,7 +913,7 @@ pub const ChunkIterator = struct {
         if (iter.bytes.len - iter.i < 8)
             return error.OutOfBounds;
 
-        const header_bytes = @ptrCast(*const [8]u8, iter.bytes[iter.i..][0..8].ptr).*;
+        const header_bytes = @ptrCast(*const [8]u8, iter.bytes[iter.i..][0..8].ptr);
         const header = chunkHeader(header_bytes);
         iter.i += header_bytes.len;
 
@@ -843,12 +934,20 @@ pub const ChunkIterator = struct {
     }
 };
 
+fn chunkEql(a: Chunk, b: Chunk) bool {
+    if (!mem.eql(u8, a.header.kind, b.header.kind))
+        return false;
+    if (!mem.eql(u8, a.data, b.data))
+        return false;
+    return a.header.len == b.header.len;
+}
+
 fn testChunkIterator(bytes: []const u8, results: []const Chunk) !void {
     var next_chunk: usize = 0;
     var iter = ChunkIterator.init(bytes);
     while (try iter.next()) |actual| : (next_chunk += 1) {
         const expected = results[next_chunk];
-        debug.assert(expected.equal(actual));
+        debug.assert(chunkEql(expected, actual));
     }
 
     debug.assert(next_chunk == results.len);
@@ -875,4 +974,28 @@ test "midi.decode.ChunkIterator" {
             .data = "data2",
         },
     });
+}
+
+fn testMessageDecoder(bytes: []const u8, results: []const midi.Message) !void {
+    var next_message: usize = 0;
+    var iter = MessageDecoder.init(bytes);
+    while (try iter.next()) |actual| : (next_message += 1) {
+        const expected = results[next_message];
+        debug.assert(expected.equal(actual));
+    }
+
+    debug.assert(next_message == results.len);
+    debug.assert((try iter.next()) == null);
+}
+
+fn testChunkIterator(bytes: []const u8, results: []const midi.file.Chunk) !void {
+    var next_chunk: usize = 0;
+    var iter = ChunkIterator.init(bytes);
+    while (try iter.next()) |actual| : (next_chunk += 1) {
+        const expected = results[next_chunk];
+        debug.assert(expected.equal(actual));
+    }
+
+    debug.assert(next_chunk == results.len);
+    debug.assert((try iter.next()) == null);
 }
