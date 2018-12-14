@@ -6,6 +6,7 @@ const math = std.math;
 const mem = std.mem;
 
 const Message = midi.Message;
+const ChunkHeader = midi.ChunkHeader;
 const Chunk = midi.Chunk;
 
 const channel_message_table = blk: {
@@ -914,7 +915,7 @@ pub const ChunkStream = struct {
         return ChunkStream{ .state = State{ .ChunkKind1 = []u8{} } };
     }
 
-    pub fn feed(stream: *ChunkStream, b: u8) ?Chunk {
+    pub fn feed(stream: *ChunkStream, b: u8) ?ChunkHeader {
         switch (stream.state) {
             State.ChunkKind1 => |_| {
                 stream.state = State{ .ChunkKind2 = []u8{b} };
@@ -984,7 +985,7 @@ pub const ChunkStream = struct {
                 return null;
             },
             State.ChunkLength4 => |len| {
-                const chunk = Chunk{
+                const chunk = ChunkHeader{
                     .kind = len.kind,
                     .len = mem.readIntBig(u32, &[]u8{
                         len.len[0],
@@ -1028,17 +1029,21 @@ pub const ChunkIterator = struct {
     }
 
     pub fn next(iter: *ChunkIterator) !?Chunk {
-        while (iter.i < iter.bytes.len) {
-            defer iter.i += 1;
-            if (iter.stream.feed(iter.bytes[iter.i])) |chunk|
-                return chunk;
+        while (iter.i < iter.bytes.len) : (iter.i += 1) {
+            if (iter.stream.feed(iter.bytes[iter.i])) |chunk| {
+                iter.i += 1;
+                return Chunk{
+                    .header = chunk,
+                    .data = try iter.chunkData(chunk),
+                };
+            }
         }
 
         try iter.stream.done();
         return null;
     }
 
-    pub fn chunkBytes(iter: *ChunkIterator, chunk: Chunk) ![]const u8 {
+    fn chunkData(iter: *ChunkIterator, chunk: ChunkHeader) ![]const u8 {
         const start = iter.i;
         const end = iter.i + chunk.len;
         if (iter.bytes.len < end)
@@ -1050,25 +1055,19 @@ pub const ChunkIterator = struct {
 };
 
 fn chunkEql(a: Chunk, b: Chunk) bool {
-    if (!mem.eql(u8, a.kind, b.kind))
+    if (!mem.eql(u8, a.header.kind, b.header.kind))
         return false;
-    return a.len == b.len;
+    if (!mem.eql(u8, a.data, b.data))
+        return false;
+    return a.header.len == b.header.len;
 }
 
-const TestChunk = struct {
-    chunk: Chunk,
-    data: []const u8,
-};
-
-fn testChunkIterator(bytes: []const u8, results: []const TestChunk) !void {
+fn testChunkIterator(bytes: []const u8, results: []const Chunk) !void {
     var next_chunk: usize = 0;
     var iter = ChunkIterator.init(bytes);
     while (try iter.next()) |actual| : (next_chunk += 1) {
-        const actual_data = try iter.chunkBytes(actual);
-
         const expected = results[next_chunk];
-        debug.assert(chunkEql(expected.chunk, actual));
-        debug.assert(mem.eql(u8, expected.data, actual_data));
+        debug.assert(chunkEql(expected, actual));
     }
 
     debug.assert(next_chunk == results.len);
@@ -1079,16 +1078,16 @@ test "midi.decode.ChunkIterator" {
     try testChunkIterator("abcd\x00\x00\x00\x04" ++
         "data" ++
         "efgh\x00\x00\x00\x05" ++
-        "data2", []TestChunk{
-        TestChunk{
-            .chunk = Chunk{
+        "data2", []Chunk{
+        Chunk{
+            .header = ChunkHeader{
                 .kind = "abcd",
                 .len = 4,
             },
             .data = "data",
         },
-        TestChunk{
-            .chunk = Chunk{
+        Chunk{
+            .header = ChunkHeader{
                 .kind = "efgh",
                 .len = 5,
             },

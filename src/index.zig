@@ -130,7 +130,12 @@ pub const Message = union(enum) {
     };
 };
 
-pub const Chunk = struct {
+pub const ChunkHeader = struct {
     kind: [4]u8,
     len: u32,
+};
+
+pub const Chunk = struct {
+    header: ChunkHeader,
+    data: []const u8,
 };
