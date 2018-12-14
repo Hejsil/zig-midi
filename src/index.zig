@@ -6,6 +6,7 @@ pub const decode = @import("decode.zig");
 pub const file = @import("file.zig");
 
 test "midi" {
+    _ = @import("test.zig");
     _ = decode;
     _ = file;
 }
@@ -176,6 +177,7 @@ pub const ChannelMessage = union(enum) {
 };
 
 pub const SystemMessage = union(enum) {
+    Undefined: Undefined,
     ExclusiveStart: ExclusiveStart,
     ExclusiveEnd: ExclusiveEnd,
     MidiTimeCodeQuarterFrame: MidiTimeCodeQuarterFrame,
@@ -191,7 +193,17 @@ pub const SystemMessage = union(enum) {
 
     pub const Kind = @TagType(@This());
 
-    pub const ExclusiveStart = void;
+    pub const Undefined = void;
+
+    /// When used with the streaming API, ExclusiveStart is a single
+    /// message and contains no data. It is the feeders responsibility
+    /// to keep track of the data between an ExclusiveStart and
+    /// ExclusiveEnd message.
+    /// With the none streaming API, the data field will contain the data
+    /// between ExclusiveStart and ExclusiveEnd.
+    pub const ExclusiveStart = struct {
+        data: []u8,
+    };
     pub const ExclusiveEnd = void;
 
     pub const MidiTimeCodeQuarterFrame = struct {
@@ -220,6 +232,7 @@ pub const SystemMessage = union(enum) {
             return false;
 
         switch (a) {
+            Kind.Undefined => return true,
             Kind.ExclusiveStart => return true,
             Kind.ExclusiveEnd => return true,
             Kind.MidiTimeCodeQuarterFrame => |av| {
