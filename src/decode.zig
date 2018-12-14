@@ -889,167 +889,47 @@ test "midi.decode.MessageStream: Reset" {
     });
 }
 
-pub const ChunkStream = struct {
-    const State = union(enum) {
-        ChunkKind1: [0]u8,
-        ChunkKind2: [1]u8,
-        ChunkKind3: [2]u8,
-        ChunkKind4: [3]u8,
-
-        ChunkLength1: ChunkLength(0),
-        ChunkLength2: ChunkLength(1),
-        ChunkLength3: ChunkLength(2),
-        ChunkLength4: ChunkLength(3),
-
-        pub fn ChunkLength(comptime len: usize) type {
-            return struct {
-                kind: [4]u8,
-                len: [len]u8,
-            };
-        }
+fn chunkHeader(bytes: *const [8]u8) ChunkHeader {
+    return ChunkHeader{
+        .kind = @ptrCast(*const [4]u8, bytes[0..4].ptr).*,
+        .len = mem.readIntBig(u32, @ptrCast(*const [4]u8, bytes[4..8].ptr)),
     };
-
-    state: State,
-
-    pub fn init() ChunkStream {
-        return ChunkStream{ .state = State{ .ChunkKind1 = []u8{} } };
-    }
-
-    pub fn feed(stream: *ChunkStream, b: u8) ?ChunkHeader {
-        switch (stream.state) {
-            State.ChunkKind1 => |_| {
-                stream.state = State{ .ChunkKind2 = []u8{b} };
-                return null;
-            },
-            State.ChunkKind2 => |kind| {
-                stream.state = State{ .ChunkKind3 = []u8{
-                    kind[0],
-                    b,
-                } };
-                return null;
-            },
-            State.ChunkKind3 => |kind| {
-                stream.state = State{ .ChunkKind4 = []u8{
-                    kind[0],
-                    kind[1],
-                    b,
-                } };
-                return null;
-            },
-            State.ChunkKind4 => |kind| {
-                stream.state = State{
-                    .ChunkLength1 = State.ChunkLength(0){
-                        .kind = []u8{
-                            kind[0],
-                            kind[1],
-                            kind[2],
-                            b,
-                        },
-                        .len = []u8{},
-                    },
-                };
-                return null;
-            },
-            State.ChunkLength1 => |len| {
-                stream.state = State{
-                    .ChunkLength2 = State.ChunkLength(1){
-                        .kind = len.kind,
-                        .len = []u8{b},
-                    },
-                };
-                return null;
-            },
-            State.ChunkLength2 => |len| {
-                stream.state = State{
-                    .ChunkLength3 = State.ChunkLength(2){
-                        .kind = len.kind,
-                        .len = []u8{
-                            len.len[0],
-                            b,
-                        },
-                    },
-                };
-                return null;
-            },
-            State.ChunkLength3 => |len| {
-                stream.state = State{
-                    .ChunkLength4 = State.ChunkLength(3){
-                        .kind = len.kind,
-                        .len = []u8{
-                            len.len[0],
-                            len.len[1],
-                            b,
-                        },
-                    },
-                };
-                return null;
-            },
-            State.ChunkLength4 => |len| {
-                const chunk = ChunkHeader{
-                    .kind = len.kind,
-                    .len = mem.readIntBig(u32, &[]u8{
-                        len.len[0],
-                        len.len[1],
-                        len.len[2],
-                        b,
-                    }),
-                };
-                stream.state = State{ .ChunkKind1 = []u8{} };
-                return chunk;
-            },
-        }
-    }
-
-    pub fn done(stream: ChunkStream) !void {
-        switch (stream.state) {
-            State.ChunkKind1 => return,
-            State.ChunkKind2,
-            State.ChunkKind3,
-            State.ChunkKind4,
-            State.ChunkLength1,
-            State.ChunkLength2,
-            State.ChunkLength3,
-            State.ChunkLength4,
-            => return error.IncompleteChunk,
-        }
-    }
-};
+}
 
 pub const ChunkIterator = struct {
-    stream: ChunkStream,
     bytes: []const u8,
     i: usize,
 
     pub fn init(bytes: []const u8) ChunkIterator {
         return ChunkIterator{
-            .stream = ChunkStream.init(),
             .bytes = bytes,
             .i = 0,
         };
     }
 
     pub fn next(iter: *ChunkIterator) !?Chunk {
-        while (iter.i < iter.bytes.len) : (iter.i += 1) {
-            if (iter.stream.feed(iter.bytes[iter.i])) |chunk| {
-                iter.i += 1;
-                return Chunk{
-                    .header = chunk,
-                    .data = try iter.chunkData(chunk),
-                };
-            }
-        }
+        if (iter.i == iter.bytes.len)
+            return null;
+        if (iter.bytes.len - iter.i < 8)
+            return error.OutOfBounds;
 
-        try iter.stream.done();
-        return null;
+        const header_bytes = @ptrCast(*const [8]u8, iter.bytes[iter.i..][0..8].ptr);
+        const header = chunkHeader(header_bytes);
+        iter.i += header_bytes.len;
+
+        return Chunk{
+            .header = header,
+            .data = try iter.chunkData(header),
+        };
     }
 
-    fn chunkData(iter: *ChunkIterator, chunk: ChunkHeader) ![]const u8 {
+    fn chunkData(iter: *ChunkIterator, header: ChunkHeader) ![]const u8 {
         const start = iter.i;
-        const end = iter.i + chunk.len;
+        const end = iter.i + header.len;
         if (iter.bytes.len < end)
             return error.OutOfBounds;
 
-        defer iter.i += chunk.len;
+        defer iter.i += header.len;
         return iter.bytes[start..end];
     }
 };
