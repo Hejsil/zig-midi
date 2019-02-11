@@ -1,7 +1,6 @@
 const std = @import("std");
 const midi = @import("index.zig");
 
-const debug = std.debug;
 const math = std.math;
 const mem = std.mem;
 

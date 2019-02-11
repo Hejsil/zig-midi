@@ -1,7 +1,7 @@
 const std = @import("std");
 const midi = @import("index.zig");
 
-const debug = std.debug;
+const testing = std.testing;
 const mem = std.mem;
 
 const decode = midi.decode;
@@ -783,41 +783,41 @@ test "midi.decode.ChunkIterator" {
 }
 
 test "decode.chunkInfo" {
-    debug.assert(decode.chunkInfo("abcd\x00\x00\x00\x04").equal(midi.file.Chunk.Info{
+    testing.expect(decode.chunkInfo("abcd\x00\x00\x00\x04").equal(midi.file.Chunk.Info{
         .kind = "abcd",
         .len = 0x04,
     }));
-    debug.assert(decode.chunkInfo("efgh\x00\x00\x04\x00").equal(midi.file.Chunk.Info{
+    testing.expect(decode.chunkInfo("efgh\x00\x00\x04\x00").equal(midi.file.Chunk.Info{
         .kind = "efgh",
         .len = 0x0400,
     }));
-    debug.assert(decode.chunkInfo("ijkl\x00\x04\x00\x00").equal(midi.file.Chunk.Info{
+    testing.expect(decode.chunkInfo("ijkl\x00\x04\x00\x00").equal(midi.file.Chunk.Info{
         .kind = "ijkl",
         .len = 0x040000,
     }));
-    debug.assert(decode.chunkInfo("mnop\x04\x00\x00\x00").equal(midi.file.Chunk.Info{
+    testing.expect(decode.chunkInfo("mnop\x04\x00\x00\x00").equal(midi.file.Chunk.Info{
         .kind = "mnop",
         .len = 0x04000000,
     }));
 }
 
 test "decode.fileHeader" {
-    debug.assert((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10")).equal(midi.file.Header{
+    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10")).equal(midi.file.Header{
         .format = midi.file.Header.Format.SingleMultiChannelTrack,
         .tracks = 0x0001,
         .division = midi.file.Header.Division{ .TicksPerQuarterNote = 0x0110 },
     }));
-    debug.assert((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10")).equal(midi.file.Header{
+    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10")).equal(midi.file.Header{
         .format = midi.file.Header.Format.ManySimultaneousTracks,
         .tracks = 0x0101,
         .division = midi.file.Header.Division{ .TicksPerQuarterNote = 0x0110 },
     }));
-    debug.assert((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10")).equal(midi.file.Header{
+    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10")).equal(midi.file.Header{
         .format = midi.file.Header.Format.ManyIndependentTracks,
         .tracks = 0x0101,
         .division = midi.file.Header.Division{ .TicksPerQuarterNote = 0x0110 },
     }));
-    debug.assert((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10")).equal(midi.file.Header{
+    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10")).equal(midi.file.Header{
         .format = midi.file.Header.Format.SingleMultiChannelTrack,
         .tracks = 0x0001,
         .division = midi.file.Header.Division{
@@ -827,7 +827,7 @@ test "decode.fileHeader" {
             },
         },
     }));
-    debug.assert((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10")).equal(midi.file.Header{
+    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10")).equal(midi.file.Header{
         .format = midi.file.Header.Format.ManySimultaneousTracks,
         .tracks = 0x0101,
         .division = midi.file.Header.Division{
@@ -837,7 +837,7 @@ test "decode.fileHeader" {
             },
         },
     }));
-    debug.assert((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10")).equal(midi.file.Header{
+    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10")).equal(midi.file.Header{
         .format = midi.file.Header.Format.ManyIndependentTracks,
         .tracks = 0x0101,
         .division = midi.file.Header.Division{
@@ -848,10 +848,10 @@ test "decode.fileHeader" {
         },
     }));
 
-    debug.assertError(decode.fileHeader("Mthd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"), error.InvalidHeaderKind);
-    debug.assertError(decode.fileHeader("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"), error.InvalidHeaderLength);
-    debug.assertError(decode.fileHeader("MThd\x00\x00\x00\x06\x00\x03\x00\x01\x01\x10"), error.InvalidHeaderFormat);
-    debug.assertError(decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x02\x01\x10"), error.InvalidHeaderNumberOfTracks);
+    testing.expectError(error.InvalidHeaderKind, decode.fileHeader("Mthd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
+    testing.expectError(error.InvalidHeaderLength, decode.fileHeader("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
+    testing.expectError(error.InvalidHeaderFormat, decode.fileHeader("MThd\x00\x00\x00\x06\x00\x03\x00\x01\x01\x10"));
+    testing.expectError(error.InvalidHeaderNumberOfTracks, decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x02\x01\x10"));
 }
 
 test "decode.StreamingVariableLengthIntDecoder" {
@@ -883,30 +883,30 @@ test "decode.StreamingVariableLengthIntDecoder" {
 }
 
 test "decode.variableLengthInt" {
-    debug.assert((try decode.variableLengthInt("\x00")).res == 0x00000000);
-    debug.assert((try decode.variableLengthInt("\x40")).res == 0x00000040);
-    debug.assert((try decode.variableLengthInt("\x7F")).res == 0x0000007F);
-    debug.assert((try decode.variableLengthInt("\x81\x00")).res == 0x00000080);
-    debug.assert((try decode.variableLengthInt("\xC0\x00")).res == 0x00002000);
-    debug.assert((try decode.variableLengthInt("\xFF\x7F")).res == 0x00003FFF);
-    debug.assert((try decode.variableLengthInt("\x81\x80\x00")).res == 0x00004000);
-    debug.assert((try decode.variableLengthInt("\xC0\x80\x00")).res == 0x00100000);
-    debug.assert((try decode.variableLengthInt("\xFF\xFF\x7F")).res == 0x001FFFFF);
-    debug.assert((try decode.variableLengthInt("\x81\x80\x80\x00")).res == 0x00200000);
-    debug.assert((try decode.variableLengthInt("\xC0\x80\x80\x00")).res == 0x08000000);
-    debug.assert((try decode.variableLengthInt("\xFF\xFF\xFF\x7F")).res == 0x0FFFFFFF);
-    debug.assert((try decode.variableLengthInt("\x00\xFF\xFF\xFF\xFF")).len == 1);
-    debug.assert((try decode.variableLengthInt("\x40\xFF\xFF\xFF\xFF")).len == 1);
-    debug.assert((try decode.variableLengthInt("\x7F\xFF\xFF\xFF\xFF")).len == 1);
-    debug.assert((try decode.variableLengthInt("\x81\x00\xFF\xFF\xFF")).len == 2);
-    debug.assert((try decode.variableLengthInt("\xC0\x00\xFF\xFF\xFF")).len == 2);
-    debug.assert((try decode.variableLengthInt("\xFF\x7F\xFF\xFF\xFF")).len == 2);
-    debug.assert((try decode.variableLengthInt("\x81\x80\x00\xFF\xFF")).len == 3);
-    debug.assert((try decode.variableLengthInt("\xC0\x80\x00\xFF\xFF")).len == 3);
-    debug.assert((try decode.variableLengthInt("\xFF\xFF\x7F\xFF\xFF")).len == 3);
-    debug.assert((try decode.variableLengthInt("\x81\x80\x80\x00\xFF")).len == 4);
-    debug.assert((try decode.variableLengthInt("\xC0\x80\x80\x00\xFF")).len == 4);
-    debug.assert((try decode.variableLengthInt("\xFF\xFF\xFF\x7F\xFF")).len == 4);
+    testing.expectEqual(u28(0x00000000), (try decode.variableLengthInt("\x00")).res);
+    testing.expectEqual(u28(0x00000040), (try decode.variableLengthInt("\x40")).res);
+    testing.expectEqual(u28(0x0000007F), (try decode.variableLengthInt("\x7F")).res);
+    testing.expectEqual(u28(0x00000080), (try decode.variableLengthInt("\x81\x00")).res);
+    testing.expectEqual(u28(0x00002000), (try decode.variableLengthInt("\xC0\x00")).res);
+    testing.expectEqual(u28(0x00003FFF), (try decode.variableLengthInt("\xFF\x7F")).res);
+    testing.expectEqual(u28(0x00004000), (try decode.variableLengthInt("\x81\x80\x00")).res);
+    testing.expectEqual(u28(0x00100000), (try decode.variableLengthInt("\xC0\x80\x00")).res);
+    testing.expectEqual(u28(0x001FFFFF), (try decode.variableLengthInt("\xFF\xFF\x7F")).res);
+    testing.expectEqual(u28(0x00200000), (try decode.variableLengthInt("\x81\x80\x80\x00")).res);
+    testing.expectEqual(u28(0x08000000), (try decode.variableLengthInt("\xC0\x80\x80\x00")).res);
+    testing.expectEqual(u28(0x0FFFFFFF), (try decode.variableLengthInt("\xFF\xFF\xFF\x7F")).res);
+    testing.expectEqual(usize(1), (try decode.variableLengthInt("\x00\xFF\xFF\xFF\xFF")).len);
+    testing.expectEqual(usize(1), (try decode.variableLengthInt("\x40\xFF\xFF\xFF\xFF")).len);
+    testing.expectEqual(usize(1), (try decode.variableLengthInt("\x7F\xFF\xFF\xFF\xFF")).len);
+    testing.expectEqual(usize(2), (try decode.variableLengthInt("\x81\x00\xFF\xFF\xFF")).len);
+    testing.expectEqual(usize(2), (try decode.variableLengthInt("\xC0\x00\xFF\xFF\xFF")).len);
+    testing.expectEqual(usize(2), (try decode.variableLengthInt("\xFF\x7F\xFF\xFF\xFF")).len);
+    testing.expectEqual(usize(3), (try decode.variableLengthInt("\x81\x80\x00\xFF\xFF")).len);
+    testing.expectEqual(usize(3), (try decode.variableLengthInt("\xC0\x80\x00\xFF\xFF")).len);
+    testing.expectEqual(usize(3), (try decode.variableLengthInt("\xFF\xFF\x7F\xFF\xFF")).len);
+    testing.expectEqual(usize(4), (try decode.variableLengthInt("\x81\x80\x80\x00\xFF")).len);
+    testing.expectEqual(usize(4), (try decode.variableLengthInt("\xC0\x80\x80\x00\xFF")).len);
+    testing.expectEqual(usize(4), (try decode.variableLengthInt("\xFF\xFF\xFF\x7F\xFF")).len);
 }
 
 test "decode.MetaEventDecoder" {
@@ -1112,11 +1112,11 @@ fn testChannelMessageDecoder(bytes: []const u8, results: []const midi.ChannelMes
     var iter = decode.ChannelMessageDecoder.init(bytes);
     while (try iter.next()) |actual| : (next_message += 1) {
         const expected = results[next_message];
-        debug.assert(expected.equal(actual));
+        testing.expect(expected.equal(actual));
     }
 
-    debug.assert(next_message == results.len);
-    debug.assert((try iter.next()) == null);
+    testing.expectEqual(results.len, next_message);
+    testing.expect(null == try iter.next());
 }
 
 fn testSystemMessageDecoder(bytes: []const u8, results: []const midi.SystemMessage) !void {
@@ -1124,11 +1124,11 @@ fn testSystemMessageDecoder(bytes: []const u8, results: []const midi.SystemMessa
     var iter = decode.SystemMessageDecoder.init(bytes);
     while (try iter.next()) |actual| : (next_message += 1) {
         const expected = results[next_message];
-        debug.assert(expected.equal(actual));
+        testing.expect(expected.equal(actual));
     }
 
-    debug.assert(next_message == results.len);
-    debug.assert((try iter.next()) == null);
+    testing.expectEqual(results.len, next_message);
+    testing.expect(null == try iter.next());
 }
 
 fn testMessageDecoder(bytes: []const u8, results: []const midi.Message) !void {
@@ -1136,11 +1136,11 @@ fn testMessageDecoder(bytes: []const u8, results: []const midi.Message) !void {
     var iter = decode.MessageDecoder.init(bytes);
     while (try iter.next()) |actual| : (next_message += 1) {
         const expected = results[next_message];
-        debug.assert(expected.equal(actual));
+        testing.expect(expected.equal(actual));
     }
 
-    debug.assert(next_message == results.len);
-    debug.assert((try iter.next()) == null);
+    testing.expectEqual(results.len, next_message);
+    testing.expect(null == try iter.next());
 }
 
 fn testMetaEventDecoder(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
@@ -1148,11 +1148,11 @@ fn testMetaEventDecoder(bytes: []const u8, results: []const midi.file.MetaEvent)
     var iter = decode.MetaEventDecoder.init(bytes);
     while (try iter.next()) |actual| : (next_event += 1) {
         const expected = results[next_event];
-        debug.assert(expected.equal(actual));
+        testing.expect(expected.equal(actual));
     }
 
-    debug.assert(next_event == results.len);
-    debug.assert((try iter.next()) == null);
+    testing.expectEqual(results.len, next_event);
+    testing.expect(null == try iter.next());
 }
 
 fn testChunkIterator(bytes: []const u8, results: []const midi.file.Chunk) !void {
@@ -1160,11 +1160,11 @@ fn testChunkIterator(bytes: []const u8, results: []const midi.file.Chunk) !void 
     var iter = decode.ChunkIterator.init(bytes);
     while (try iter.next()) |actual| : (next_chunk += 1) {
         const expected = results[next_chunk];
-        debug.assert(expected.equal(actual));
+        testing.expect(expected.equal(actual));
     }
 
-    debug.assert(next_chunk == results.len);
-    debug.assert((try iter.next()) == null);
+    testing.expectEqual(results.len, next_chunk);
+    testing.expect(null == try iter.next());
 }
 
 fn testStreamingVariableLengthIntDecoder(bytes: []const u8, results: []const u28) !void {
@@ -1174,10 +1174,10 @@ fn testStreamingVariableLengthIntDecoder(bytes: []const u8, results: []const u28
         if (try decoder.feed(b)) |actual| {
             const expected = results[next_result];
             next_result += 1;
-            debug.assert(actual == expected);
+            testing.expectEqual(expected, actual);
         }
     }
 
-    debug.assert(next_result == results.len);
-    debug.assert(decoder.res == 0);
+    testing.expectEqual(results.len, next_result);
+    testing.expectEqual(usize(0), decoder.res);
 }
