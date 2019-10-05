@@ -3,859 +3,315 @@ const midi = @import("index.zig");
 
 const testing = std.testing;
 const mem = std.mem;
+const io = std.io;
 
 const decode = midi.decode;
 const file = midi.file;
 
-test "midi.decode.ChannelMessageDecoder" {
-    try testChannelMessageDecoder("\x80\x00\x00" ++
+test "midi.decode.message" {
+    try testDecodeMessage("\x80\x00\x00" ++
         "\x7F\x7F" ++
-        "\x8F\x7F\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .NoteOff = midi.ChannelMessage.NoteOff{
-                .channel = 0x0,
-                .note = 0x00,
-                .velocity = 0x00,
-            },
+        "\x8F\x7F\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x00,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .NoteOff = midi.ChannelMessage.NoteOff{
-                .channel = 0x0,
-                .note = 0x7F,
-                .velocity = 0x7F,
-            },
+        midi.Message{
+            .status = 0x00,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
-        midi.ChannelMessage{
-            .NoteOff = midi.ChannelMessage.NoteOff{
-                .channel = 0xF,
-                .note = 0x7F,
-                .velocity = 0x7F,
-            },
+        midi.Message{
+            .status = 0x0F,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
     });
-    try testChannelMessageDecoder("\x90\x00\x00" ++
+    try testDecodeMessage("\x90\x00\x00" ++
         "\x7F\x7F" ++
-        "\x9F\x7F\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .NoteOn = midi.ChannelMessage.NoteOn{
-                .channel = 0x0,
-                .note = 0x00,
-                .velocity = 0x00,
-            },
+        "\x9F\x7F\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x10,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .NoteOn = midi.ChannelMessage.NoteOn{
-                .channel = 0x0,
-                .note = 0x7F,
-                .velocity = 0x7F,
-            },
+        midi.Message{
+            .status = 0x10,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
-        midi.ChannelMessage{
-            .NoteOn = midi.ChannelMessage.NoteOn{
-                .channel = 0xF,
-                .note = 0x7F,
-                .velocity = 0x7F,
-            },
+        midi.Message{
+            .status = 0x1F,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
     });
-    try testChannelMessageDecoder("\xA0\x00\x00" ++
+    try testDecodeMessage("\xA0\x00\x00" ++
         "\x7F\x7F" ++
-        "\xAF\x7F\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .PolyphonicKeyPressure = midi.ChannelMessage.PolyphonicKeyPressure{
-                .channel = 0x0,
-                .note = 0x00,
-                .pressure = 0x00,
-            },
+        "\xAF\x7F\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x20,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .PolyphonicKeyPressure = midi.ChannelMessage.PolyphonicKeyPressure{
-                .channel = 0x0,
-                .note = 0x7F,
-                .pressure = 0x7F,
-            },
+        midi.Message{
+            .status = 0x20,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
-        midi.ChannelMessage{
-            .PolyphonicKeyPressure = midi.ChannelMessage.PolyphonicKeyPressure{
-                .channel = 0xF,
-                .note = 0x7F,
-                .pressure = 0x7F,
-            },
+        midi.Message{
+            .status = 0x2F,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
     });
-    try testChannelMessageDecoder("\xB0\x00\x00" ++
+    try testDecodeMessage("\xB0\x00\x00" ++
         "\x77\x7F" ++
-        "\xBF\x77\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .ControlChange = midi.ChannelMessage.ControlChange{
-                .channel = 0x0,
-                .controller = 0x0,
-                .value = 0x0,
-            },
+        "\xBF\x77\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x30,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .ControlChange = midi.ChannelMessage.ControlChange{
-                .channel = 0x0,
-                .controller = 0x77,
-                .value = 0x7F,
-            },
+        midi.Message{
+            .status = 0x30,
+            .values = [2]u7 { 0x77, 0x7F },
         },
-        midi.ChannelMessage{
-            .ControlChange = midi.ChannelMessage.ControlChange{
-                .channel = 0xF,
-                .controller = 0x77,
-                .value = 0x7F,
-            },
+        midi.Message{
+            .status = 0x3F,
+            .values = [2]u7 { 0x77, 0x7F },
         },
     });
-    try testChannelMessageDecoder("\xB0\x78\x00" ++
-        "\x78\x00" ++
-        "\xBF\x78\x00", []midi.ChannelMessage{
-        midi.ChannelMessage{ .AllSoundOff = midi.ChannelMessage.AllSoundOff{ .channel = 0x0 } },
-        midi.ChannelMessage{ .AllSoundOff = midi.ChannelMessage.AllSoundOff{ .channel = 0x0 } },
-        midi.ChannelMessage{ .AllSoundOff = midi.ChannelMessage.AllSoundOff{ .channel = 0xF } },
-    });
-    try testChannelMessageDecoder("\xB0\x79\x00" ++
-        "\x79\x7F" ++
-        "\xBF\x79\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .ResetAllControllers = midi.ChannelMessage.ResetAllControllers{
-                .channel = 0x0,
-                .value = 0x0,
-            },
-        },
-        midi.ChannelMessage{
-            .ResetAllControllers = midi.ChannelMessage.ResetAllControllers{
-                .channel = 0x0,
-                .value = 0x7F,
-            },
-        },
-        midi.ChannelMessage{
-            .ResetAllControllers = midi.ChannelMessage.ResetAllControllers{
-                .channel = 0xF,
-                .value = 0x7F,
-            },
-        },
-    });
-    try testChannelMessageDecoder("\xB0\x7A\x00" ++
-        "\x7A\x7F" ++
-        "\xBF\x7A\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .LocalControl = midi.ChannelMessage.LocalControl{
-                .channel = 0x0,
-                .on = false,
-            },
-        },
-        midi.ChannelMessage{
-            .LocalControl = midi.ChannelMessage.LocalControl{
-                .channel = 0x0,
-                .on = true,
-            },
-        },
-        midi.ChannelMessage{
-            .LocalControl = midi.ChannelMessage.LocalControl{
-                .channel = 0xF,
-                .on = true,
-            },
-        },
-    });
-    try testChannelMessageDecoder("\xB0\x7B\x00" ++
-        "\x7B\x00" ++
-        "\xBF\x7B\x00", []midi.ChannelMessage{
-        midi.ChannelMessage{ .AllNotesOff = midi.ChannelMessage.AllNotesOff{ .channel = 0x0 } },
-        midi.ChannelMessage{ .AllNotesOff = midi.ChannelMessage.AllNotesOff{ .channel = 0x0 } },
-        midi.ChannelMessage{ .AllNotesOff = midi.ChannelMessage.AllNotesOff{ .channel = 0xF } },
-    });
-    try testChannelMessageDecoder("\xB0\x7C\x00" ++
-        "\x7C\x00" ++
-        "\xBF\x7C\x00", []midi.ChannelMessage{
-        midi.ChannelMessage{ .OmniModeOff = midi.ChannelMessage.OmniModeOff{ .channel = 0x0 } },
-        midi.ChannelMessage{ .OmniModeOff = midi.ChannelMessage.OmniModeOff{ .channel = 0x0 } },
-        midi.ChannelMessage{ .OmniModeOff = midi.ChannelMessage.OmniModeOff{ .channel = 0xF } },
-    });
-    try testChannelMessageDecoder("\xB0\x7D\x00" ++
-        "\x7D\x00" ++
-        "\xBF\x7D\x00", []midi.ChannelMessage{
-        midi.ChannelMessage{ .OmniModeOn = midi.ChannelMessage.OmniModeOn{ .channel = 0x0 } },
-        midi.ChannelMessage{ .OmniModeOn = midi.ChannelMessage.OmniModeOn{ .channel = 0x0 } },
-        midi.ChannelMessage{ .OmniModeOn = midi.ChannelMessage.OmniModeOn{ .channel = 0xF } },
-    });
-    try testChannelMessageDecoder("\xB0\x7E\x00" ++
-        "\x7E\x7F" ++
-        "\xBF\x7E\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .MonoModeOn = midi.ChannelMessage.MonoModeOn{
-                .channel = 0x0,
-                .value = 0x00,
-            },
-        },
-        midi.ChannelMessage{
-            .MonoModeOn = midi.ChannelMessage.MonoModeOn{
-                .channel = 0x0,
-                .value = 0x7F,
-            },
-        },
-        midi.ChannelMessage{
-            .MonoModeOn = midi.ChannelMessage.MonoModeOn{
-                .channel = 0xF,
-                .value = 0x7F,
-            },
-        },
-    });
-    try testChannelMessageDecoder("\xB0\x7F\x00" ++
-        "\x7F\x00" ++
-        "\xBF\x7F\x00", []midi.ChannelMessage{
-        midi.ChannelMessage{ .PolyModeOn = midi.ChannelMessage.PolyModeOn{ .channel = 0x0 } },
-        midi.ChannelMessage{ .PolyModeOn = midi.ChannelMessage.PolyModeOn{ .channel = 0x0 } },
-        midi.ChannelMessage{ .PolyModeOn = midi.ChannelMessage.PolyModeOn{ .channel = 0xF } },
-    });
-    try testChannelMessageDecoder("\xC0\x00" ++
+    try testDecodeMessage("\xC0\x00" ++
         "\x7F" ++
-        "\xCF\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .ProgramChange = midi.ChannelMessage.ProgramChange{
-                .channel = 0x0,
-                .program = 0x00,
-            },
+        "\xCF\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x40,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .ProgramChange = midi.ChannelMessage.ProgramChange{
-                .channel = 0x0,
-                .program = 0x7F,
-            },
+        midi.Message{
+            .status = 0x40,
+            .values = [2]u7 { 0x7F, 0x0 },
         },
-        midi.ChannelMessage{
-            .ProgramChange = midi.ChannelMessage.ProgramChange{
-                .channel = 0xF,
-                .program = 0x7F,
-            },
+        midi.Message{
+            .status = 0x4F,
+            .values = [2]u7 { 0x7F, 0x0 },
         },
     });
-    try testChannelMessageDecoder("\xD0\x00" ++
+    try testDecodeMessage("\xD0\x00" ++
         "\x7F" ++
-        "\xDF\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .ChannelPressure = midi.ChannelMessage.ChannelPressure{
-                .channel = 0x0,
-                .pressure = 0x00,
-            },
+        "\xDF\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x50,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .ChannelPressure = midi.ChannelMessage.ChannelPressure{
-                .channel = 0x0,
-                .pressure = 0x7F,
-            },
+        midi.Message{
+            .status = 0x50,
+            .values = [2]u7 { 0x7F, 0x0 },
         },
-        midi.ChannelMessage{
-            .ChannelPressure = midi.ChannelMessage.ChannelPressure{
-                .channel = 0xF,
-                .pressure = 0x7F,
-            },
+        midi.Message{
+            .status = 0x5F,
+            .values = [2]u7 { 0x7F, 0x0 },
         },
     });
-    try testChannelMessageDecoder("\xE0\x00\x00" ++
+    try testDecodeMessage("\xE0\x00\x00" ++
         "\x7F\x7F" ++
-        "\xEF\x7F\x7F", []midi.ChannelMessage{
-        midi.ChannelMessage{
-            .PitchBendChange = midi.ChannelMessage.PitchBendChange{
-                .channel = 0x0,
-                .bend = 0x00,
-            },
+        "\xEF\x7F\x7F", [_]midi.Message{
+        midi.Message{
+            .status = 0x60,
+            .values = [2]u7 { 0x0, 0x0 },
         },
-        midi.ChannelMessage{
-            .PitchBendChange = midi.ChannelMessage.PitchBendChange{
-                .channel = 0x0,
-                .bend = 0x7F << 7 | 0x7F,
-            },
+        midi.Message{
+            .status = 0x60,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
-        midi.ChannelMessage{
-            .PitchBendChange = midi.ChannelMessage.PitchBendChange{
-                .channel = 0xF,
-                .bend = 0x7F << 7 | 0x7F,
-            },
+        midi.Message{
+            .status = 0x6F,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
     });
-}
-
-test "midi.decode.SystemMessageDecoder" {
-    try testSystemMessageDecoder("\xF0\x01\x0F\x7F\xF7", []midi.SystemMessage{
-        midi.SystemMessage{ .ExclusiveStart = midi.SystemMessage.ExclusiveStart{ .data = "" } },
-        midi.SystemMessage{ .ExclusiveEnd = {} },
+    try testDecodeMessage("\xF0\xF0", [_]midi.Message{
+        midi.Message{
+            .status = 0x70,
+            .values = [2]u7 { 0x0, 0x0 },
+        },
+        midi.Message{
+            .status = 0x70,
+            .values = [2]u7 { 0x0, 0x0 },
+        },
     });
-    try testSystemMessageDecoder("\xF1\x00" ++
+    try testDecodeMessage("\xF1\x00" ++
         "\xF1\x0F" ++
         "\xF1\x70" ++
-        "\xF1\x7F", []midi.SystemMessage{
-        midi.SystemMessage{
-            .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                .message_type = 0,
-                .values = 0,
-            },
-        },
-        midi.SystemMessage{
-            .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                .message_type = 0,
-                .values = 0xF,
-            },
-        },
-        midi.SystemMessage{
-            .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                .message_type = 0x7,
-                .values = 0x0,
-            },
-        },
-        midi.SystemMessage{
-            .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                .message_type = 0x7,
-                .values = 0xF,
-            },
-        },
-    });
-    try testSystemMessageDecoder("\xF2\x00\x00" ++
-        "\xF2\x7F\x7F", []midi.SystemMessage{
-        midi.SystemMessage{ .SongPositionPointer = midi.SystemMessage.SongPositionPointer{ .beats = 0x0 } },
-        midi.SystemMessage{ .SongPositionPointer = midi.SystemMessage.SongPositionPointer{ .beats = 0x7F << 7 | 0x7F } },
-    });
-    try testSystemMessageDecoder("\xF3\x00" ++
-        "\xF3\x7F", []midi.SystemMessage{
-        midi.SystemMessage{ .SongSelect = midi.SystemMessage.SongSelect{ .sequence = 0x0 } },
-        midi.SystemMessage{ .SongSelect = midi.SystemMessage.SongSelect{ .sequence = 0x7F } },
-    });
-    try testSystemMessageDecoder("\xF6\xF6", []midi.SystemMessage{
-        midi.SystemMessage{ .TuneRequest = {} },
-        midi.SystemMessage{ .TuneRequest = {} },
-    });
-    try testSystemMessageDecoder("\xF8\xF8", []midi.SystemMessage{
-        midi.SystemMessage{ .TimingClock = {} },
-        midi.SystemMessage{ .TimingClock = {} },
-    });
-    try testSystemMessageDecoder("\xFA\xFA", []midi.SystemMessage{
-        midi.SystemMessage{ .Start = {} },
-        midi.SystemMessage{ .Start = {} },
-    });
-    try testSystemMessageDecoder("\xFB\xFB", []midi.SystemMessage{
-        midi.SystemMessage{ .Continue = {} },
-        midi.SystemMessage{ .Continue = {} },
-    });
-    try testSystemMessageDecoder("\xFC\xFC", []midi.SystemMessage{
-        midi.SystemMessage{ .Stop = {} },
-        midi.SystemMessage{ .Stop = {} },
-    });
-    try testSystemMessageDecoder("\xFE\xFE", []midi.SystemMessage{
-        midi.SystemMessage{ .ActiveSensing = {} },
-        midi.SystemMessage{ .ActiveSensing = {} },
-    });
-    try testSystemMessageDecoder("\xFF\xFF", []midi.SystemMessage{
-        midi.SystemMessage{ .Reset = {} },
-        midi.SystemMessage{ .Reset = {} },
-    });
-}
-
-test "midi.decode.MessageDecoder" {
-    try testMessageDecoder("\x80\x00\x00" ++
-        "\x7F\x7F" ++
-        "\x8F\x7F\x7F", []midi.Message{
+        "\xF1\x7F", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .NoteOff = midi.ChannelMessage.NoteOff{
-                    .channel = 0x0,
-                    .note = 0x00,
-                    .velocity = 0x00,
-                },
-            },
+            .status = 0x71,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .NoteOff = midi.ChannelMessage.NoteOff{
-                    .channel = 0x0,
-                    .note = 0x7F,
-                    .velocity = 0x7F,
-                },
-            },
+            .status = 0x71,
+            .values = [2]u7 { 0x0F, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .NoteOff = midi.ChannelMessage.NoteOff{
-                    .channel = 0xF,
-                    .note = 0x7F,
-                    .velocity = 0x7F,
-                },
-            },
+            .status = 0x71,
+            .values = [2]u7 { 0x70, 0x0 },
+        },
+        midi.Message{
+            .status = 0x71,
+            .values = [2]u7 { 0x7F, 0x0 },
         },
     });
-    try testMessageDecoder("\x90\x00\x00" ++
-        "\x7F\x7F" ++
-        "\x9F\x7F\x7F", []midi.Message{
+    try testDecodeMessage("\xF2\x00\x00" ++
+        "\xF2\x7F\x7F", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .NoteOn = midi.ChannelMessage.NoteOn{
-                    .channel = 0x0,
-                    .note = 0x00,
-                    .velocity = 0x00,
-                },
-            },
+            .status = 0x72,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .NoteOn = midi.ChannelMessage.NoteOn{
-                    .channel = 0x0,
-                    .note = 0x7F,
-                    .velocity = 0x7F,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .NoteOn = midi.ChannelMessage.NoteOn{
-                    .channel = 0xF,
-                    .note = 0x7F,
-                    .velocity = 0x7F,
-                },
-            },
+            .status = 0x72,
+            .values = [2]u7 { 0x7F, 0x7F },
         },
     });
-    try testMessageDecoder("\xA0\x00\x00" ++
-        "\x7F\x7F" ++
-        "\xAF\x7F\x7F", []midi.Message{
+    try testDecodeMessage("\xF3\x00" ++
+        "\xF3\x7F", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .PolyphonicKeyPressure = midi.ChannelMessage.PolyphonicKeyPressure{
-                    .channel = 0x0,
-                    .note = 0x00,
-                    .pressure = 0x00,
-                },
-            },
+            .status = 0x73,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .PolyphonicKeyPressure = midi.ChannelMessage.PolyphonicKeyPressure{
-                    .channel = 0x0,
-                    .note = 0x7F,
-                    .pressure = 0x7F,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .PolyphonicKeyPressure = midi.ChannelMessage.PolyphonicKeyPressure{
-                    .channel = 0xF,
-                    .note = 0x7F,
-                    .pressure = 0x7F,
-                },
-            },
+            .status = 0x73,
+            .values = [2]u7 { 0x7F, 0x0 },
         },
     });
-    try testMessageDecoder("\xB0\x00\x00" ++
-        "\x77\x7F" ++
-        "\xBF\x77\x7F", []midi.Message{
+    try testDecodeMessage("\xF6\xF6", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ControlChange = midi.ChannelMessage.ControlChange{
-                    .channel = 0x0,
-                    .controller = 0x0,
-                    .value = 0x0,
-                },
-            },
+            .status = 0x76,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ControlChange = midi.ChannelMessage.ControlChange{
-                    .channel = 0x0,
-                    .controller = 0x77,
-                    .value = 0x7F,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ControlChange = midi.ChannelMessage.ControlChange{
-                    .channel = 0xF,
-                    .controller = 0x77,
-                    .value = 0x7F,
-                },
-            },
+            .status = 0x76,
+            .values = [2]u7 { 0x0, 0x0 },
         },
     });
-    try testMessageDecoder("\xB0\x78\x00" ++
-        "\x78\x00" ++
-        "\xBF\x78\x00", []midi.Message{
-        midi.Message{ .Channel = midi.ChannelMessage{ .AllSoundOff = midi.ChannelMessage.AllSoundOff{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .AllSoundOff = midi.ChannelMessage.AllSoundOff{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .AllSoundOff = midi.ChannelMessage.AllSoundOff{ .channel = 0xF } } },
-    });
-    try testMessageDecoder("\xB0\x79\x00" ++
-        "\x79\x7F" ++
-        "\xBF\x79\x7F", []midi.Message{
+    try testDecodeMessage("\xF7\xF7", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ResetAllControllers = midi.ChannelMessage.ResetAllControllers{
-                    .channel = 0x0,
-                    .value = 0x0,
-                },
-            },
+            .status = 0x77,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ResetAllControllers = midi.ChannelMessage.ResetAllControllers{
-                    .channel = 0x0,
-                    .value = 0x7F,
-                },
-            },
+            .status = 0x77,
+            .values = [2]u7 { 0x0, 0x0 },
+        },
+    });
+    try testDecodeMessage("\xF8\xF8", [_]midi.Message{
+        midi.Message{
+            .status = 0x78,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ResetAllControllers = midi.ChannelMessage.ResetAllControllers{
-                    .channel = 0xF,
-                    .value = 0x7F,
-                },
-            },
+            .status = 0x78,
+            .values = [2]u7 { 0x0, 0x0 },
         },
     });
-    try testMessageDecoder("\xB0\x7A\x00" ++
-        "\x7A\x7F" ++
-        "\xBF\x7A\x7F", []midi.Message{
+    try testDecodeMessage("\xFA\xFA", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .LocalControl = midi.ChannelMessage.LocalControl{
-                    .channel = 0x0,
-                    .on = false,
-                },
-            },
+            .status = 0x7A,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .LocalControl = midi.ChannelMessage.LocalControl{
-                    .channel = 0x0,
-                    .on = true,
-                },
-            },
+            .status = 0x7A,
+            .values = [2]u7 { 0x0, 0x0 },
+        },
+    });
+    try testDecodeMessage("\xFB\xFB", [_]midi.Message{
+        midi.Message{
+            .status = 0x7B,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .LocalControl = midi.ChannelMessage.LocalControl{
-                    .channel = 0xF,
-                    .on = true,
-                },
-            },
+            .status = 0x7B,
+            .values = [2]u7 { 0x0, 0x0 },
         },
     });
-    try testMessageDecoder("\xB0\x7B\x00" ++
-        "\x7B\x00" ++
-        "\xBF\x7B\x00", []midi.Message{
-        midi.Message{ .Channel = midi.ChannelMessage{ .AllNotesOff = midi.ChannelMessage.AllNotesOff{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .AllNotesOff = midi.ChannelMessage.AllNotesOff{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .AllNotesOff = midi.ChannelMessage.AllNotesOff{ .channel = 0xF } } },
-    });
-    try testMessageDecoder("\xB0\x7C\x00" ++
-        "\x7C\x00" ++
-        "\xBF\x7C\x00", []midi.Message{
-        midi.Message{ .Channel = midi.ChannelMessage{ .OmniModeOff = midi.ChannelMessage.OmniModeOff{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .OmniModeOff = midi.ChannelMessage.OmniModeOff{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .OmniModeOff = midi.ChannelMessage.OmniModeOff{ .channel = 0xF } } },
-    });
-    try testMessageDecoder("\xB0\x7D\x00" ++
-        "\x7D\x00" ++
-        "\xBF\x7D\x00", []midi.Message{
-        midi.Message{ .Channel = midi.ChannelMessage{ .OmniModeOn = midi.ChannelMessage.OmniModeOn{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .OmniModeOn = midi.ChannelMessage.OmniModeOn{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .OmniModeOn = midi.ChannelMessage.OmniModeOn{ .channel = 0xF } } },
-    });
-    try testMessageDecoder("\xB0\x7E\x00" ++
-        "\x7E\x7F" ++
-        "\xBF\x7E\x7F", []midi.Message{
+    try testDecodeMessage("\xFC\xFC", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .MonoModeOn = midi.ChannelMessage.MonoModeOn{
-                    .channel = 0x0,
-                    .value = 0x00,
-                },
-            },
+            .status = 0x7C,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .MonoModeOn = midi.ChannelMessage.MonoModeOn{
-                    .channel = 0x0,
-                    .value = 0x7F,
-                },
-            },
+            .status = 0x7C,
+            .values = [2]u7 { 0x0, 0x0 },
+        },
+    });
+    try testDecodeMessage("\xFE\xFE", [_]midi.Message{
+        midi.Message{
+            .status = 0x7E,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .MonoModeOn = midi.ChannelMessage.MonoModeOn{
-                    .channel = 0xF,
-                    .value = 0x7F,
-                },
-            },
+            .status = 0x7E,
+            .values = [2]u7 { 0x0, 0x0 },
         },
     });
-    try testMessageDecoder("\xB0\x7F\x00" ++
-        "\x7F\x00" ++
-        "\xBF\x7F\x00", []midi.Message{
-        midi.Message{ .Channel = midi.ChannelMessage{ .PolyModeOn = midi.ChannelMessage.PolyModeOn{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .PolyModeOn = midi.ChannelMessage.PolyModeOn{ .channel = 0x0 } } },
-        midi.Message{ .Channel = midi.ChannelMessage{ .PolyModeOn = midi.ChannelMessage.PolyModeOn{ .channel = 0xF } } },
-    });
-    try testMessageDecoder("\xC0\x00" ++
-        "\x7F" ++
-        "\xCF\x7F", []midi.Message{
+    try testDecodeMessage("\xFF\xFF", [_]midi.Message{
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ProgramChange = midi.ChannelMessage.ProgramChange{
-                    .channel = 0x0,
-                    .program = 0x00,
-                },
-            },
+            .status = 0x7F,
+            .values = [2]u7 { 0x0, 0x0 },
         },
         midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ProgramChange = midi.ChannelMessage.ProgramChange{
-                    .channel = 0x0,
-                    .program = 0x7F,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ProgramChange = midi.ChannelMessage.ProgramChange{
-                    .channel = 0xF,
-                    .program = 0x7F,
-                },
-            },
-        },
-    });
-    try testMessageDecoder("\xD0\x00" ++
-        "\x7F" ++
-        "\xDF\x7F", []midi.Message{
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ChannelPressure = midi.ChannelMessage.ChannelPressure{
-                    .channel = 0x0,
-                    .pressure = 0x00,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ChannelPressure = midi.ChannelMessage.ChannelPressure{
-                    .channel = 0x0,
-                    .pressure = 0x7F,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .ChannelPressure = midi.ChannelMessage.ChannelPressure{
-                    .channel = 0xF,
-                    .pressure = 0x7F,
-                },
-            },
-        },
-    });
-    try testMessageDecoder("\xE0\x00\x00" ++
-        "\x7F\x7F" ++
-        "\xEF\x7F\x7F", []midi.Message{
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .PitchBendChange = midi.ChannelMessage.PitchBendChange{
-                    .channel = 0x0,
-                    .bend = 0x00,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .PitchBendChange = midi.ChannelMessage.PitchBendChange{
-                    .channel = 0x0,
-                    .bend = 0x7F << 7 | 0x7F,
-                },
-            },
-        },
-        midi.Message{
-            .Channel = midi.ChannelMessage{
-                .PitchBendChange = midi.ChannelMessage.PitchBendChange{
-                    .channel = 0xF,
-                    .bend = 0x7F << 7 | 0x7F,
-                },
-            },
-        },
-    });
-    try testMessageDecoder("\xF0\x01\x0F\x7F\xF7", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .ExclusiveStart = midi.SystemMessage.ExclusiveStart{ .data = "" } } },
-        midi.Message{ .System = midi.SystemMessage{ .ExclusiveEnd = {} } },
-    });
-    try testMessageDecoder("\xF1\x00" ++
-        "\xF1\x0F" ++
-        "\xF1\x70" ++
-        "\xF1\x7F", []midi.Message{
-        midi.Message{
-            .System = midi.SystemMessage{
-                .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                    .message_type = 0,
-                    .values = 0,
-                },
-            },
-        },
-        midi.Message{
-            .System = midi.SystemMessage{
-                .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                    .message_type = 0,
-                    .values = 0xF,
-                },
-            },
-        },
-        midi.Message{
-            .System = midi.SystemMessage{
-                .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                    .message_type = 0x7,
-                    .values = 0x0,
-                },
-            },
-        },
-        midi.Message{
-            .System = midi.SystemMessage{
-                .MidiTimeCodeQuarterFrame = midi.SystemMessage.MidiTimeCodeQuarterFrame{
-                    .message_type = 0x7,
-                    .values = 0xF,
-                },
-            },
-        },
-    });
-    try testMessageDecoder("\xF2\x00\x00" ++
-        "\xF2\x7F\x7F", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .SongPositionPointer = midi.SystemMessage.SongPositionPointer{ .beats = 0x0 } } },
-        midi.Message{ .System = midi.SystemMessage{ .SongPositionPointer = midi.SystemMessage.SongPositionPointer{ .beats = 0x7F << 7 | 0x7F } } },
-    });
-    try testMessageDecoder("\xF3\x00" ++
-        "\xF3\x7F", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .SongSelect = midi.SystemMessage.SongSelect{ .sequence = 0x0 } } },
-        midi.Message{ .System = midi.SystemMessage{ .SongSelect = midi.SystemMessage.SongSelect{ .sequence = 0x7F } } },
-    });
-    try testMessageDecoder("\xF6\xF6", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .TuneRequest = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .TuneRequest = {} } },
-    });
-    try testMessageDecoder("\xF8\xF8", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .TimingClock = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .TimingClock = {} } },
-    });
-    try testMessageDecoder("\xFA\xFA", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .Start = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .Start = {} } },
-    });
-    try testMessageDecoder("\xFB\xFB", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .Continue = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .Continue = {} } },
-    });
-    try testMessageDecoder("\xFC\xFC", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .Stop = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .Stop = {} } },
-    });
-    try testMessageDecoder("\xFE\xFE", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .ActiveSensing = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .ActiveSensing = {} } },
-    });
-    try testMessageDecoder("\xFF\xFF", []midi.Message{
-        midi.Message{ .System = midi.SystemMessage{ .Reset = {} } },
-        midi.Message{ .System = midi.SystemMessage{ .Reset = {} } },
-    });
-}
-
-test "midi.decode.ChunkIterator" {
-    try testChunkIterator("abcd\x00\x00\x00\x04" ++
-        "data" ++
-        "efgh\x00\x00\x00\x05" ++
-        "data2", []midi.file.Chunk{
-        midi.file.Chunk{
-            .info = midi.file.Chunk.Info{
-                .kind = "abcd",
-                .len = 4,
-            },
-            .data = "data",
-        },
-        midi.file.Chunk{
-            .info = midi.file.Chunk.Info{
-                .kind = "efgh",
-                .len = 5,
-            },
-            .data = "data2",
+            .status = 0x7F,
+            .values = [2]u7 { 0x0, 0x0 },
         },
     });
 }
 
-test "decode.chunkInfo" {
-    testing.expect(decode.chunkInfo("abcd\x00\x00\x00\x04").equal(midi.file.Chunk.Info{
+test "decode.chunk" {
+    testing.expectEqual(midi.file.Chunk{
         .kind = "abcd",
         .len = 0x04,
-    }));
-    testing.expect(decode.chunkInfo("efgh\x00\x00\x04\x00").equal(midi.file.Chunk.Info{
+    }, decode.chunk("abcd\x00\x00\x00\x04"));
+    testing.expectEqual(midi.file.Chunk{
         .kind = "efgh",
         .len = 0x0400,
-    }));
-    testing.expect(decode.chunkInfo("ijkl\x00\x04\x00\x00").equal(midi.file.Chunk.Info{
+    }, decode.chunk("efgh\x00\x00\x04\x00"));
+    testing.expectEqual(midi.file.Chunk{
         .kind = "ijkl",
         .len = 0x040000,
-    }));
-    testing.expect(decode.chunkInfo("mnop\x04\x00\x00\x00").equal(midi.file.Chunk.Info{
+    }, decode.chunk("ijkl\x00\x04\x00\x00"));
+    testing.expectEqual(midi.file.Chunk{
         .kind = "mnop",
         .len = 0x04000000,
-    }));
+    }, decode.chunk("mnop\x04\x00\x00\x00"));
 }
 
 test "decode.fileHeader" {
-    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10")).equal(midi.file.Header{
-        .format = midi.file.Header.Format.SingleMultiChannelTrack,
+    testing.expectEqual(midi.file.Header{
+        .format = 0,
         .tracks = 0x0001,
-        .division = midi.file.Header.Division{ .TicksPerQuarterNote = 0x0110 },
-    }));
-    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10")).equal(midi.file.Header{
-        .format = midi.file.Header.Format.ManySimultaneousTracks,
+        .division = 0x0110,
+    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
+    testing.expectEqual(midi.file.Header{
+        .format = 1,
         .tracks = 0x0101,
-        .division = midi.file.Header.Division{ .TicksPerQuarterNote = 0x0110 },
-    }));
-    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10")).equal(midi.file.Header{
-        .format = midi.file.Header.Format.ManyIndependentTracks,
+        .division = 0x0110,
+    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10"));
+    testing.expectEqual(midi.file.Header{
+        .format = 2,
         .tracks = 0x0101,
-        .division = midi.file.Header.Division{ .TicksPerQuarterNote = 0x0110 },
-    }));
-    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10")).equal(midi.file.Header{
-        .format = midi.file.Header.Format.SingleMultiChannelTrack,
+        .division = 0x0110,
+    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10"));
+    testing.expectEqual(midi.file.Header{
+        .format = 0,
         .tracks = 0x0001,
-        .division = midi.file.Header.Division{
-            .SubdivisionsOfSecond = midi.file.Header.Division.SubdivisionsOfSecond{
-                .smpte_format = -1,
-                .ticks_per_frame = 0x10,
-            },
-        },
-    }));
-    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10")).equal(midi.file.Header{
-        .format = midi.file.Header.Format.ManySimultaneousTracks,
+        .division = 0xFF10,
+    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10"));
+    testing.expectEqual(midi.file.Header{
+        .format = 1,
         .tracks = 0x0101,
-        .division = midi.file.Header.Division{
-            .SubdivisionsOfSecond = midi.file.Header.Division.SubdivisionsOfSecond{
-                .smpte_format = -1,
-                .ticks_per_frame = 0x10,
-            },
-        },
-    }));
-    testing.expect((try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10")).equal(midi.file.Header{
-        .format = midi.file.Header.Format.ManyIndependentTracks,
+        .division = 0xFF10,
+    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10"));
+    testing.expectEqual(midi.file.Header{
+        .format = 2,
         .tracks = 0x0101,
-        .division = midi.file.Header.Division{
-            .SubdivisionsOfSecond = midi.file.Header.Division.SubdivisionsOfSecond{
-                .smpte_format = -1,
-                .ticks_per_frame = 0x10,
-            },
-        },
-    }));
+        .division = 0xFF10,
+    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10"));
 
-    testing.expectError(error.InvalidHeaderKind, decode.fileHeader("Mthd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
-    testing.expectError(error.InvalidHeaderLength, decode.fileHeader("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
-    testing.expectError(error.InvalidHeaderFormat, decode.fileHeader("MThd\x00\x00\x00\x06\x00\x03\x00\x01\x01\x10"));
-    testing.expectError(error.InvalidHeaderNumberOfTracks, decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x02\x01\x10"));
+    testing.expectError(error.InvalidFileHeader, decode.fileHeader("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
 }
 
-test "decode.StreamingVariableLengthIntDecoder" {
-    try testStreamingVariableLengthIntDecoder("\x00" ++
+test "decode.variableLenInt" {
+    try testDecodeVariableLenInt("\x00" ++
         "\x40" ++
         "\x7F" ++
         "\x81\x00" ++
@@ -866,7 +322,7 @@ test "decode.StreamingVariableLengthIntDecoder" {
         "\xFF\xFF\x7F" ++
         "\x81\x80\x80\x00" ++
         "\xC0\x80\x80\x00" ++
-        "\xFF\xFF\xFF\x7F", []u28{
+        "\xFF\xFF\xFF\x7F", [_]u28{
         0x00000000,
         0x00000040,
         0x0000007F,
@@ -880,304 +336,206 @@ test "decode.StreamingVariableLengthIntDecoder" {
         0x08000000,
         0x0FFFFFFF,
     });
+
+    testing.expectEqual(u28(0x00000000), try decode.variableLenInt(&io.SliceInStream.init("\x00\xFF\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00000040), try decode.variableLenInt(&io.SliceInStream.init("\x40\xFF\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x0000007F), try decode.variableLenInt(&io.SliceInStream.init("\x7F\xFF\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00000080), try decode.variableLenInt(&io.SliceInStream.init("\x81\x00\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00002000), try decode.variableLenInt(&io.SliceInStream.init("\xC0\x00\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00003FFF), try decode.variableLenInt(&io.SliceInStream.init("\xFF\x7F\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00004000), try decode.variableLenInt(&io.SliceInStream.init("\x81\x80\x00\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00100000), try decode.variableLenInt(&io.SliceInStream.init("\xC0\x80\x00\xFF\xFF").stream));
+    testing.expectEqual(u28(0x001FFFFF), try decode.variableLenInt(&io.SliceInStream.init("\xFF\xFF\x7F\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00200000), try decode.variableLenInt(&io.SliceInStream.init("\x81\x80\x80\x00\xFF").stream));
+    testing.expectEqual(u28(0x08000000), try decode.variableLenInt(&io.SliceInStream.init("\xC0\x80\x80\x00\xFF").stream));
+    testing.expectEqual(u28(0x0FFFFFFF), try decode.variableLenInt(&io.SliceInStream.init("\xFF\xFF\xFF\x7F\xFF").stream));
 }
 
-test "decode.variableLengthInt" {
-    testing.expectEqual(u28(0x00000000), (try decode.variableLengthInt("\x00")).res);
-    testing.expectEqual(u28(0x00000040), (try decode.variableLengthInt("\x40")).res);
-    testing.expectEqual(u28(0x0000007F), (try decode.variableLengthInt("\x7F")).res);
-    testing.expectEqual(u28(0x00000080), (try decode.variableLengthInt("\x81\x00")).res);
-    testing.expectEqual(u28(0x00002000), (try decode.variableLengthInt("\xC0\x00")).res);
-    testing.expectEqual(u28(0x00003FFF), (try decode.variableLengthInt("\xFF\x7F")).res);
-    testing.expectEqual(u28(0x00004000), (try decode.variableLengthInt("\x81\x80\x00")).res);
-    testing.expectEqual(u28(0x00100000), (try decode.variableLengthInt("\xC0\x80\x00")).res);
-    testing.expectEqual(u28(0x001FFFFF), (try decode.variableLengthInt("\xFF\xFF\x7F")).res);
-    testing.expectEqual(u28(0x00200000), (try decode.variableLengthInt("\x81\x80\x80\x00")).res);
-    testing.expectEqual(u28(0x08000000), (try decode.variableLengthInt("\xC0\x80\x80\x00")).res);
-    testing.expectEqual(u28(0x0FFFFFFF), (try decode.variableLengthInt("\xFF\xFF\xFF\x7F")).res);
-    testing.expectEqual(usize(1), (try decode.variableLengthInt("\x00\xFF\xFF\xFF\xFF")).len);
-    testing.expectEqual(usize(1), (try decode.variableLengthInt("\x40\xFF\xFF\xFF\xFF")).len);
-    testing.expectEqual(usize(1), (try decode.variableLengthInt("\x7F\xFF\xFF\xFF\xFF")).len);
-    testing.expectEqual(usize(2), (try decode.variableLengthInt("\x81\x00\xFF\xFF\xFF")).len);
-    testing.expectEqual(usize(2), (try decode.variableLengthInt("\xC0\x00\xFF\xFF\xFF")).len);
-    testing.expectEqual(usize(2), (try decode.variableLengthInt("\xFF\x7F\xFF\xFF\xFF")).len);
-    testing.expectEqual(usize(3), (try decode.variableLengthInt("\x81\x80\x00\xFF\xFF")).len);
-    testing.expectEqual(usize(3), (try decode.variableLengthInt("\xC0\x80\x00\xFF\xFF")).len);
-    testing.expectEqual(usize(3), (try decode.variableLengthInt("\xFF\xFF\x7F\xFF\xFF")).len);
-    testing.expectEqual(usize(4), (try decode.variableLengthInt("\x81\x80\x80\x00\xFF")).len);
-    testing.expectEqual(usize(4), (try decode.variableLengthInt("\xC0\x80\x80\x00\xFF")).len);
-    testing.expectEqual(usize(4), (try decode.variableLengthInt("\xFF\xFF\xFF\x7F\xFF")).len);
-}
-
-test "decode.MetaEventDecoder" {
-    try testMetaEventDecoder("\xFF\x00\x00" ++
-        "\xFF\x00\x02\x01\x02", []midi.file.MetaEvent{
+test "decode.metaEvent" {
+    try testDecodeMetaEvent("\xFF\x00\x00" ++
+        "\xFF\x00\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SequenceNumber,
+            .kind_byte = 0,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SequenceNumber,
+            .kind_byte = 0,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x01\x00" ++
-        "\xFF\x01\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x01\x00" ++
+        "\xFF\x01\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.TextEvent,
+            .kind_byte = 1,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.TextEvent,
+            .kind_byte = 1,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x02\x00" ++
-        "\xFF\x02\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x02\x00" ++
+        "\xFF\x02\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.CopyrightNotice,
+            .kind_byte = 2,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.CopyrightNotice,
+            .kind_byte = 2,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x03\x00" ++
-        "\xFF\x03\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x03\x00" ++
+        "\xFF\x03\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.TrackName,
+            .kind_byte = 3,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.TrackName,
+            .kind_byte = 3,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x04\x00" ++
-        "\xFF\x04\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x04\x00" ++
+        "\xFF\x04\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.InstrumentName,
+            .kind_byte = 4,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.InstrumentName,
+            .kind_byte = 4,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x05\x00" ++
-        "\xFF\x05\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x05\x00" ++
+        "\xFF\x05\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.Luric,
+            .kind_byte = 5,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.Luric,
+            .kind_byte = 5,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x06\x00" ++
-        "\xFF\x06\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x06\x00" ++
+        "\xFF\x06\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.Marker,
+            .kind_byte = 6,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.Marker,
+            .kind_byte = 6,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x20\x00" ++
-        "\xFF\x20\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x20\x00" ++
+        "\xFF\x20\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.MidiChannelPrefix,
+            .kind_byte = 0x20,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.MidiChannelPrefix,
+            .kind_byte = 0x20,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x2F\x00" ++
-        "\xFF\x2F\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x2F\x00" ++
+        "\xFF\x2F\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.EndOfTrack,
+            .kind_byte = 0x2F,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.EndOfTrack,
+            .kind_byte = 0x2F,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x2F\x00" ++
-        "\xFF\x2F\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x51\x00" ++
+        "\xFF\x51\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.EndOfTrack,
+            .kind_byte = 0x51,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.EndOfTrack,
+            .kind_byte = 0x51,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x51\x00" ++
-        "\xFF\x51\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x54\x00" ++
+        "\xFF\x54\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SetTempo,
+            .kind_byte = 0x54,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SetTempo,
+            .kind_byte = 0x54,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x54\x00" ++
-        "\xFF\x54\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x58\x00" ++
+        "\xFF\x58\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SmpteOffset,
+            .kind_byte = 0x58,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SmpteOffset,
+            .kind_byte = 0x58,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x58\x00" ++
-        "\xFF\x58\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x59\x00" ++
+        "\xFF\x59\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.TimeSignature,
+            .kind_byte = 0x59,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.TimeSignature,
+            .kind_byte = 0x59,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
-    try testMetaEventDecoder("\xFF\x59\x00" ++
-        "\xFF\x59\x02\x01\x02", []midi.file.MetaEvent{
+    try testDecodeMetaEvent("\xFF\x7F\x00" ++
+        "\xFF\x7F\x02", [_]midi.file.MetaEvent{
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.KeySignature,
+            .kind_byte = 0x7F,
             .len = 0,
-            .data = "\x01"[0..].ptr,
         },
         midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.KeySignature,
+            .kind_byte = 0x7F,
             .len = 2,
-            .data = "\x01\x02"[0..].ptr,
-        },
-    });
-    try testMetaEventDecoder("\xFF\x7F\x00" ++
-        "\xFF\x7F\x02\x01\x02", []midi.file.MetaEvent{
-        midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SequencerSpecificMetaEvent,
-            .len = 0,
-            .data = "\x01"[0..].ptr,
-        },
-        midi.file.MetaEvent{
-            .kind = midi.file.MetaEvent.Kind.SequencerSpecificMetaEvent,
-            .len = 2,
-            .data = "\x01\x02"[0..].ptr,
         },
     });
 }
 
-fn testChannelMessageDecoder(bytes: []const u8, results: []const midi.ChannelMessage) !void {
-    var next_message: usize = 0;
-    var iter = decode.ChannelMessageDecoder.init(bytes);
-    while (try iter.next()) |actual| : (next_message += 1) {
-        const expected = results[next_message];
-        testing.expect(expected.equal(actual));
+fn testDecodeMessage(bytes: []const u8, results: []const midi.Message) !void {
+    var last: ?midi.Message = null;
+    var stream = io.SliceInStream.init(bytes);
+    for (results) |expected| {
+        const actual = try decode.message(last, &stream.stream);
+        testing.expectEqual(expected, actual);
+        last = actual;
     }
 
-    testing.expectEqual(results.len, next_message);
-    testing.expect(null == try iter.next());
+    testing.expectError(error.EndOfStream, stream.stream.readByte());
 }
 
-fn testSystemMessageDecoder(bytes: []const u8, results: []const midi.SystemMessage) !void {
-    var next_message: usize = 0;
-    var iter = decode.SystemMessageDecoder.init(bytes);
-    while (try iter.next()) |actual| : (next_message += 1) {
-        const expected = results[next_message];
-        testing.expect(expected.equal(actual));
+fn testDecodeVariableLenInt(bytes: []const u8, results: []const u28) !void {
+    var stream = io.SliceInStream.init(bytes);
+    for (results) |expected| {
+        const actual = try decode.variableLenInt(&stream.stream);
+        testing.expectEqual(expected, actual);
     }
 
-    testing.expectEqual(results.len, next_message);
-    testing.expect(null == try iter.next());
+    testing.expectError(error.EndOfStream, stream.stream.readByte());
 }
 
-fn testMessageDecoder(bytes: []const u8, results: []const midi.Message) !void {
-    var next_message: usize = 0;
-    var iter = decode.MessageDecoder.init(bytes);
-    while (try iter.next()) |actual| : (next_message += 1) {
-        const expected = results[next_message];
-        testing.expect(expected.equal(actual));
+fn testDecodeMetaEvent(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
+    var stream = io.SliceInStream.init(bytes);
+    for (results) |expected| {
+        const actual = try decode.metaEvent(&stream.stream);
+        testing.expectEqual(expected, actual);
     }
 
-    testing.expectEqual(results.len, next_message);
-    testing.expect(null == try iter.next());
-}
-
-fn testMetaEventDecoder(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
-    var next_event: usize = 0;
-    var iter = decode.MetaEventDecoder.init(bytes);
-    while (try iter.next()) |actual| : (next_event += 1) {
-        const expected = results[next_event];
-        testing.expect(expected.equal(actual));
-    }
-
-    testing.expectEqual(results.len, next_event);
-    testing.expect(null == try iter.next());
-}
-
-fn testChunkIterator(bytes: []const u8, results: []const midi.file.Chunk) !void {
-    var next_chunk: usize = 0;
-    var iter = decode.ChunkIterator.init(bytes);
-    while (try iter.next()) |actual| : (next_chunk += 1) {
-        const expected = results[next_chunk];
-        testing.expect(expected.equal(actual));
-    }
-
-    testing.expectEqual(results.len, next_chunk);
-    testing.expect(null == try iter.next());
-}
-
-fn testStreamingVariableLengthIntDecoder(bytes: []const u8, results: []const u28) !void {
-    var decoder = decode.StreamingVariableLengthIntDecoder.init();
-    var next_result: usize = 0;
-    for (bytes) |b| {
-        if (try decoder.feed(b)) |actual| {
-            const expected = results[next_result];
-            next_result += 1;
-            testing.expectEqual(expected, actual);
-        }
-    }
-
-    testing.expectEqual(results.len, next_result);
-    testing.expectEqual(usize(0), decoder.res);
+    testing.expectError(error.EndOfStream, stream.stream.readByte());
 }
