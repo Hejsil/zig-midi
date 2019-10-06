@@ -1,5 +1,5 @@
 const std = @import("std");
-const midi = @import("index.zig");
+const midi = @import("../midi.zig");
 
 const testing = std.testing;
 const mem = std.mem;
@@ -277,31 +277,55 @@ test "decode.chunk" {
 
 test "decode.fileHeader" {
     testing.expectEqual(midi.file.Header{
+        .chunk = midi.file.Chunk{
+            .kind = "MThd",
+            .len = 6,
+        },
         .format = 0,
         .tracks = 0x0001,
         .division = 0x0110,
     }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
     testing.expectEqual(midi.file.Header{
+        .chunk = midi.file.Chunk{
+            .kind = "MThd",
+            .len = 6,
+        },
         .format = 1,
         .tracks = 0x0101,
         .division = 0x0110,
     }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10"));
     testing.expectEqual(midi.file.Header{
+        .chunk = midi.file.Chunk{
+            .kind = "MThd",
+            .len = 6,
+        },
         .format = 2,
         .tracks = 0x0101,
         .division = 0x0110,
     }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10"));
     testing.expectEqual(midi.file.Header{
+        .chunk = midi.file.Chunk{
+            .kind = "MThd",
+            .len = 6,
+        },
         .format = 0,
         .tracks = 0x0001,
         .division = 0xFF10,
     }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10"));
     testing.expectEqual(midi.file.Header{
+        .chunk = midi.file.Chunk{
+            .kind = "MThd",
+            .len = 6,
+        },
         .format = 1,
         .tracks = 0x0101,
         .division = 0xFF10,
     }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10"));
     testing.expectEqual(midi.file.Header{
+        .chunk = midi.file.Chunk{
+            .kind = "MThd",
+            .len = 6,
+        },
         .format = 2,
         .tracks = 0x0101,
         .division = 0xFF10,

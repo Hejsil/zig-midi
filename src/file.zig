@@ -1,12 +1,13 @@
-const midi = @import("index.zig");
+const midi = @import("../midi.zig");
 const std = @import("std");
 
-const mem = std.mem;
-
 pub const Header = struct {
+    chunk: Chunk,
     format: u16,
     tracks: u16,
     division: u16,
+
+    pub const size = 6;
 };
 
 pub const Chunk = struct {

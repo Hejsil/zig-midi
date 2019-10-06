@@ -1,5 +1,5 @@
 const std = @import("std");
-const midi = @import("index.zig");
+const midi = @import("../midi.zig");
 
 const debug = std.debug;
 const math = std.math;
@@ -88,13 +88,14 @@ pub fn chunk(bytes: [8]u8) midi.file.Chunk {
 }
 
 pub fn fileHeader(bytes: [14]u8) !midi.file.Header {
-    const info = decode.chunk(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
-    if (!mem.eql(u8, info.kind, midi.file.Chunk.file_header))
+    const _chunk = decode.chunk(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
+    if (!mem.eql(u8, _chunk.kind, midi.file.Chunk.file_header))
         return error.InvalidFileHeader;
-    if (info.len < 6)
+    if (_chunk.len < 6)
         return error.InvalidFileHeader;
 
     return midi.file.Header{
+        .chunk = _chunk,
         .format = mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes[8..10].ptr)),
         .tracks = mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes[10..12].ptr)),
         .division = mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes[12..14].ptr)),
