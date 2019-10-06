@@ -50,27 +50,10 @@ pub const Message = struct {
         const _channel = @truncate(u4, message.status);
         switch (_kind) {
             // Channel events
-            .NoteOff,
-            .NoteOn,
-            .PolyphonicKeyPressure,
-            .ControlChange,
-            .ProgramChange,
-            .ChannelPressure,
-            .PitchBendChange => return _channel,
+            .NoteOff, .NoteOn, .PolyphonicKeyPressure, .ControlChange, .ProgramChange, .ChannelPressure, .PitchBendChange => return _channel,
 
             // System events
-            .ExclusiveStart,
-            .MidiTimeCodeQuarterFrame,
-            .SongPositionPointer,
-            .SongSelect,
-            .TuneRequest,
-            .ExclusiveEnd,
-            .TimingClock,
-            .Start,
-            .Continue,
-            .Stop,
-            .ActiveSensing,
-            .Reset => return null,
+            .ExclusiveStart, .MidiTimeCodeQuarterFrame, .SongPositionPointer, .SongSelect, .TuneRequest, .ExclusiveEnd, .TimingClock, .Start, .Continue, .Stop, .ActiveSensing, .Reset => return null,
 
             .Undefined => return null,
         }

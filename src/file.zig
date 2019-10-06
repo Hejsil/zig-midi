@@ -12,6 +12,9 @@ pub const Header = struct {
 pub const Chunk = struct {
     kind: [4]u8,
     len: u32,
+
+    pub const file_header = "MThd";
+    pub const track_header = "MTrk";
 };
 
 pub const MetaEvent = struct {
@@ -63,21 +66,7 @@ pub const TrackEvent = struct {
     kind: Kind,
 
     pub const Kind = union(enum) {
-        Undefined: void,
-        MidiEvent: ChannelMessage,
-        SystemExclusiveF0: SystemExclusive,
-        SystemExclusiveF7: SystemExclusive,
+        MidiEvent: midi.Message,
         MetaEvent: MetaEvent,
-
-        /// When used with the streaming API, SystemExclusive is a single
-        /// event and contains no data. It is the feeders responsibility
-        /// to keep track of the data after the event.
-        /// With the none streaming API, the data field will contain the data
-        /// after the event. data.len should always be the same as len using
-        /// this API.
-        pub const SystemExclusive = struct {
-            len: u28,
-            data: []u8,
-        };
     };
 };

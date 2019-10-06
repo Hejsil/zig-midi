@@ -34,16 +34,16 @@ pub fn message(last_message: ?midi.Message, stream: var) !midi.Message {
     const kind = @truncate(u3, status_byte >> 4);
     const channel = @truncate(u4, status_byte);
     switch (kind) {
-        0x0, 0x1, 0x2, 0x3, 0x6, => return midi.Message{
+        0x0, 0x1, 0x2, 0x3, 0x6 => return midi.Message{
             .status = status_byte,
-            .values = [2]u8 {
+            .values = [2]u8{
                 math.cast(u7, first_byte orelse try stream.readByte()) catch return error.InvalidDataByte,
                 try readDataByte(stream),
-            }
+            },
         },
         0x4, 0x5 => return midi.Message{
             .status = status_byte,
-            .values = [2]u8 {
+            .values = [2]u8{
                 math.cast(u7, first_byte orelse try stream.readByte()) catch return error.InvalidDataByte,
                 0,
             },
@@ -53,18 +53,18 @@ pub fn message(last_message: ?midi.Message, stream: var) !midi.Message {
             switch (channel) {
                 0x0, 0x6, 0x07, 0x8, 0xA, 0xB, 0xC, 0xE, 0xF => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8 { 0, 0 },
+                    .values = [2]u8{ 0, 0 },
                 },
                 0x1, 0x3 => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8 {
+                    .values = [2]u8{
                         try readDataByte(stream),
                         0,
                     },
                 },
                 0x2 => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8 {
+                    .values = [2]u8{
                         try readDataByte(stream),
                         try readDataByte(stream),
                     },
@@ -73,7 +73,7 @@ pub fn message(last_message: ?midi.Message, stream: var) !midi.Message {
                 // Undefined
                 0x4, 0x5, 0x9, 0xD => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8 { 0, 0 },
+                    .values = [2]u8{ 0, 0 },
                 },
             }
         },
@@ -89,6 +89,8 @@ pub fn chunk(bytes: [8]u8) midi.file.Chunk {
 
 pub fn fileHeader(bytes: [14]u8) !midi.file.Header {
     const info = decode.chunk(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
+    if (!mem.eql(u8, info.kind, midi.file.Chunk.file_header))
+        return error.InvalidFileHeader;
     if (info.len < 6)
         return error.InvalidFileHeader;
 
@@ -114,12 +116,31 @@ pub fn variableLenInt(stream: var) !u28 {
 }
 
 pub fn metaEvent(stream: var) !midi.file.MetaEvent {
-    const first_byte = try stream.readByte();
-    if (first_byte != 0xFF)
-        return error.InvalidMetaEvent;
-
     return midi.file.MetaEvent{
         .kind_byte = try stream.readByte(),
         .len = try variableLenInt(stream),
+    };
+}
+
+pub fn trackEvent(last_event: ?midi.file.TrackEvent, stream: var) !midi.file.TrackEvent {
+    var ps = io.PeekStream(1, @typeOf(stream.read(undefined)).ErrorSet).init(stream);
+    const delta_time = try variableLenInt(&ps.stream);
+    const first_byte = try ps.stream.readByte();
+    if (first_byte == 0xFF) {
+        return midi.file.TrackEvent{
+            .delta_time = delta_time,
+            .kind = midi.file.TrackEvent.Kind{ .MetaEvent = try metaEvent(&ps.stream) },
+        };
+    }
+
+    const last_midi_event = if (last_event) |e| switch (e.kind) {
+        .MidiEvent => |m| m,
+        .MetaEvent => null,
+    } else null;
+
+    ps.putBackByte(first_byte);
+    return midi.file.TrackEvent{
+        .delta_time = delta_time,
+        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try message(last_midi_event, &ps.stream) },
     };
 }
