@@ -2,11 +2,11 @@ const std = @import("std");
 
 const mem = std.mem;
 
-pub const decode = @import("src/decode.zig");
-pub const file = @import("src/file.zig");
+pub const decode = @import("midi/decode.zig");
+pub const file = @import("midi/file.zig");
 
 test "midi" {
-    _ = @import("src/test.zig");
+    _ = @import("midi/test.zig");
     _ = decode;
     _ = file;
 }
