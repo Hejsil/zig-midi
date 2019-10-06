@@ -10,7 +10,7 @@ pub fn build(b: *Builder) void {
     const fmt_step = b.addFmt([_][]const u8{
         "build.zig",
         "midi.zig",
-        "src",
+        "midi",
     });
 
     b.default_step.dependOn(&fmt_step.step);

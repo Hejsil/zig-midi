@@ -80,15 +80,27 @@ pub fn message(last_message: ?midi.Message, stream: var) !midi.Message {
     }
 }
 
-pub fn chunk(bytes: [8]u8) midi.file.Chunk {
+pub fn chunk(stream: var) !midi.file.Chunk {
+    var buf: [8]u8 = undefined;
+    try stream.readNoEof(&buf);
+    return chunkFromBytes(buf);
+}
+
+pub fn chunkFromBytes(bytes: [8]u8) midi.file.Chunk {
     return midi.file.Chunk{
         .kind = @ptrCast(*const [4]u8, bytes[0..4].ptr).*,
         .len = mem.readIntBig(u32, @ptrCast(*const [4]u8, bytes[4..8].ptr)),
     };
 }
 
-pub fn fileHeader(bytes: [14]u8) !midi.file.Header {
-    const _chunk = decode.chunk(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
+pub fn fileHeader(stream: var) !midi.file.Header {
+    var buf: [14]u8 = undefined;
+    try stream.readNoEof(&buf);
+    return fileHeaderFromBytes(buf);
+}
+
+pub fn fileHeaderFromBytes(bytes: [14]u8) !midi.file.Header {
+    const _chunk = decode.chunkFromBytes(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
     if (!mem.eql(u8, _chunk.kind, midi.file.Chunk.file_header))
         return error.InvalidFileHeader;
     if (_chunk.len < 6)

@@ -256,26 +256,26 @@ test "midi.decode.message" {
     });
 }
 
-test "decode.chunk" {
+test "decode.chunkFromBytes" {
     testing.expectEqual(midi.file.Chunk{
         .kind = "abcd",
         .len = 0x04,
-    }, decode.chunk("abcd\x00\x00\x00\x04"));
+    }, decode.chunkFromBytes("abcd\x00\x00\x00\x04"));
     testing.expectEqual(midi.file.Chunk{
         .kind = "efgh",
         .len = 0x0400,
-    }, decode.chunk("efgh\x00\x00\x04\x00"));
+    }, decode.chunkFromBytes("efgh\x00\x00\x04\x00"));
     testing.expectEqual(midi.file.Chunk{
         .kind = "ijkl",
         .len = 0x040000,
-    }, decode.chunk("ijkl\x00\x04\x00\x00"));
+    }, decode.chunkFromBytes("ijkl\x00\x04\x00\x00"));
     testing.expectEqual(midi.file.Chunk{
         .kind = "mnop",
         .len = 0x04000000,
-    }, decode.chunk("mnop\x04\x00\x00\x00"));
+    }, decode.chunkFromBytes("mnop\x04\x00\x00\x00"));
 }
 
-test "decode.fileHeader" {
+test "decode.fileHeaderFromBytes" {
     testing.expectEqual(midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd",
@@ -284,7 +284,7 @@ test "decode.fileHeader" {
         .format = 0,
         .tracks = 0x0001,
         .division = 0x0110,
-    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
+    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
     testing.expectEqual(midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd",
@@ -293,7 +293,7 @@ test "decode.fileHeader" {
         .format = 1,
         .tracks = 0x0101,
         .division = 0x0110,
-    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10"));
+    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10"));
     testing.expectEqual(midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd",
@@ -302,7 +302,7 @@ test "decode.fileHeader" {
         .format = 2,
         .tracks = 0x0101,
         .division = 0x0110,
-    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10"));
+    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10"));
     testing.expectEqual(midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd",
@@ -311,7 +311,7 @@ test "decode.fileHeader" {
         .format = 0,
         .tracks = 0x0001,
         .division = 0xFF10,
-    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10"));
+    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10"));
     testing.expectEqual(midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd",
@@ -320,7 +320,7 @@ test "decode.fileHeader" {
         .format = 1,
         .tracks = 0x0101,
         .division = 0xFF10,
-    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10"));
+    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10"));
     testing.expectEqual(midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd",
@@ -329,9 +329,9 @@ test "decode.fileHeader" {
         .format = 2,
         .tracks = 0x0101,
         .division = 0xFF10,
-    }, try decode.fileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10"));
+    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10"));
 
-    testing.expectError(error.InvalidFileHeader, decode.fileHeader("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
+    testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
 }
 
 test "decode.variableLenInt" {

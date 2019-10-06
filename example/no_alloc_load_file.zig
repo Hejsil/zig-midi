@@ -5,9 +5,7 @@ pub fn main() !void {
     const stdin_file = try std.io.getStdIn();
     const stdin = &stdin_file.inStream().stream;
 
-    var header_buf: [14]u8 = undefined;
-    try stdin.readNoEof(&header_buf);
-    const header = try midi.decode.fileHeader(header_buf);
+    const header = try midi.decode.fileHeader(stdin);
     std.debug.warn("{}\n", header);
 
     // The midi standard says that we should respect the headers size, even if it
@@ -16,12 +14,10 @@ pub fn main() !void {
     try stdin.skipBytes(header.chunk.len - midi.file.Header.size);
 
     while (true) {
-        var chunk_buf: [8]u8 = undefined;
-        stdin.readNoEof(&chunk_buf) catch |err| switch (err) {
+        const chunk = midi.decode.chunk(stdin) catch |err| switch (err) {
             error.EndOfStream => break,
             else => |e| return e,
         };
-        const chunk = midi.decode.chunk(chunk_buf);
 
         std.debug.warn("{}\n", chunk);
 
