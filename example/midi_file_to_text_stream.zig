@@ -45,10 +45,19 @@ pub fn main() !void {
             std.debug.warn("  {:>6}", event.delta_time);
             switch (event.kind) {
                 .MetaEvent => |meta_event| {
-                    std.debug.warn(" {:>20} {:>6}\n", metaEventKindToStr(meta_event.kind()), meta_event.len);
-                    try stdin.skipBytes(meta_event.len);
-                    if (meta_event.kind() == .EndOfTrack)
-                        break;
+                    var buf: [1024]u8 = undefined;
+                    const data = buf[0..meta_event.len];
+                    try stdin.readNoEof(data);
+
+                    std.debug.warn(" {:>20} {:>6}", metaEventKindToStr(meta_event.kind()), meta_event.len);
+                    switch (meta_event.kind()) {
+                        .Luric, .InstrumentName, .TrackName => std.debug.warn(" {}\n", data),
+                        .EndOfTrack => {
+                            std.debug.warn("\n");
+                            break;
+                        },
+                        else => std.debug.warn("\n"),
+                    }
                 },
                 .MidiEvent => |midi_event| {
                     std.debug.warn(" {:>20}", midiEventKindToStr(midi_event.kind()));
