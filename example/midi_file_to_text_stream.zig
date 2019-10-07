@@ -55,6 +55,10 @@ pub fn main() !void {
                     if (midi_event.channel()) |channel|
                         std.debug.warn(" {:>6}", channel);
                     std.debug.warn(" {:>3} {:>3}\n", midi_event.values[0], midi_event.values[1]);
+
+                    if (midi_event.kind() == .ExclusiveStart) {
+                        while ((try stdin.readByte()) != 0xF7) {}
+                    }
                 },
             }
         }
