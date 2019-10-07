@@ -30,7 +30,7 @@ pub fn build(b: *Builder) void {
 
     const example_step = b.step("examples", "Build examples");
     inline for ([_][]const u8{
-        "no_alloc_load_file",
+        "midi_file_to_text_stream",
     }) |example_name| {
         const example = b.addExecutable(example_name, "example/" ++ example_name ++ ".zig");
         example.addPackagePath("midi", "midi.zig");
