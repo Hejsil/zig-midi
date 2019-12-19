@@ -98,7 +98,7 @@ pub fn fileHeader(stream: var) !midi.file.Header {
 }
 
 pub fn fileHeaderFromBytes(bytes: [14]u8) !midi.file.Header {
-    const _chunk = decode.chunkFromBytes(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
+    const _chunk = chunkFromBytes(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
     if (!mem.eql(u8, _chunk.kind, midi.file.Chunk.file_header))
         return error.InvalidFileHeader;
     if (_chunk.len < 6)
@@ -152,6 +152,6 @@ pub fn trackEvent(last_event: ?midi.file.TrackEvent, stream: var) !midi.file.Tra
     ps.putBackByte(first_byte);
     return midi.file.TrackEvent{
         .delta_time = delta_time,
-        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try message(last_midi_event, &ps.stream) },
+        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try message(&ps.stream, last_midi_event) },
     };
 }

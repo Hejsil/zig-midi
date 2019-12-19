@@ -591,7 +591,7 @@ fn testDecodeMessage(bytes: []const u8, results: []const midi.Message) !void {
     var last: ?midi.Message = null;
     var stream = io.SliceInStream.init(bytes);
     for (results) |expected| {
-        const actual = try decode.message(last, &stream.stream);
+        const actual = try decode.message(&stream.stream, last);
         testing.expectEqual(expected, actual);
         last = actual;
     }
