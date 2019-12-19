@@ -334,8 +334,8 @@ test "decode.fileHeaderFromBytes" {
     testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
 }
 
-test "decode.variableLenInt" {
-    try testDecodeVariableLenInt("\x00" ++
+test "decode.int" {
+    try testDecodeInt("\x00" ++
         "\x40" ++
         "\x7F" ++
         "\x81\x00" ++
@@ -361,18 +361,18 @@ test "decode.variableLenInt" {
         0x0FFFFFFF,
     });
 
-    testing.expectEqual(u28(0x00000000), try decode.variableLenInt(&io.SliceInStream.init("\x00\xFF\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00000040), try decode.variableLenInt(&io.SliceInStream.init("\x40\xFF\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x0000007F), try decode.variableLenInt(&io.SliceInStream.init("\x7F\xFF\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00000080), try decode.variableLenInt(&io.SliceInStream.init("\x81\x00\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00002000), try decode.variableLenInt(&io.SliceInStream.init("\xC0\x00\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00003FFF), try decode.variableLenInt(&io.SliceInStream.init("\xFF\x7F\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00004000), try decode.variableLenInt(&io.SliceInStream.init("\x81\x80\x00\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00100000), try decode.variableLenInt(&io.SliceInStream.init("\xC0\x80\x00\xFF\xFF").stream));
-    testing.expectEqual(u28(0x001FFFFF), try decode.variableLenInt(&io.SliceInStream.init("\xFF\xFF\x7F\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00200000), try decode.variableLenInt(&io.SliceInStream.init("\x81\x80\x80\x00\xFF").stream));
-    testing.expectEqual(u28(0x08000000), try decode.variableLenInt(&io.SliceInStream.init("\xC0\x80\x80\x00\xFF").stream));
-    testing.expectEqual(u28(0x0FFFFFFF), try decode.variableLenInt(&io.SliceInStream.init("\xFF\xFF\xFF\x7F\xFF").stream));
+    testing.expectEqual(u28(0x00000000), try decode.int(&io.SliceInStream.init("\x00\xFF\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00000040), try decode.int(&io.SliceInStream.init("\x40\xFF\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x0000007F), try decode.int(&io.SliceInStream.init("\x7F\xFF\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00000080), try decode.int(&io.SliceInStream.init("\x81\x00\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00002000), try decode.int(&io.SliceInStream.init("\xC0\x00\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00003FFF), try decode.int(&io.SliceInStream.init("\xFF\x7F\xFF\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00004000), try decode.int(&io.SliceInStream.init("\x81\x80\x00\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00100000), try decode.int(&io.SliceInStream.init("\xC0\x80\x00\xFF\xFF").stream));
+    testing.expectEqual(u28(0x001FFFFF), try decode.int(&io.SliceInStream.init("\xFF\xFF\x7F\xFF\xFF").stream));
+    testing.expectEqual(u28(0x00200000), try decode.int(&io.SliceInStream.init("\x81\x80\x80\x00\xFF").stream));
+    testing.expectEqual(u28(0x08000000), try decode.int(&io.SliceInStream.init("\xC0\x80\x80\x00\xFF").stream));
+    testing.expectEqual(u28(0x0FFFFFFF), try decode.int(&io.SliceInStream.init("\xFF\xFF\xFF\x7F\xFF").stream));
 }
 
 test "decode.metaEvent" {
@@ -599,10 +599,10 @@ fn testDecodeMessage(bytes: []const u8, results: []const midi.Message) !void {
     testing.expectError(error.EndOfStream, stream.stream.readByte());
 }
 
-fn testDecodeVariableLenInt(bytes: []const u8, results: []const u28) !void {
+fn testDecodeInt(bytes: []const u8, results: []const u28) !void {
     var stream = io.SliceInStream.init(bytes);
     for (results) |expected| {
-        const actual = try decode.variableLenInt(&stream.stream);
+        const actual = try decode.int(&stream.stream);
         testing.expectEqual(expected, actual);
     }
 

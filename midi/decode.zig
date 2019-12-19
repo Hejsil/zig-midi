@@ -6,8 +6,6 @@ const math = std.math;
 const mem = std.mem;
 const io = std.io;
 
-const decode = @This();
-
 fn statusByte(b: u8) ?u7 {
     if (@truncate(u1, b >> 7) != 0)
         return @truncate(u7, b);
@@ -19,7 +17,7 @@ fn readDataByte(stream: var) !u7 {
     return math.cast(u7, try stream.readByte()) catch return error.InvalidDataByte;
 }
 
-pub fn message(last_message: ?midi.Message, stream: var) !midi.Message {
+pub fn message(stream: var, last_message: ?midi.Message) !midi.Message {
     var first_byte: ?u8 = try stream.readByte();
     const status_byte = if (statusByte(first_byte.?)) |status_byte| blk: {
         first_byte = null;
@@ -114,7 +112,7 @@ pub fn fileHeaderFromBytes(bytes: [14]u8) !midi.file.Header {
     };
 }
 
-pub fn variableLenInt(stream: var) !u28 {
+pub fn int(stream: var) !u28 {
     var res: u28 = 0;
     while (true) {
         const b = try stream.readByte();
@@ -131,13 +129,13 @@ pub fn variableLenInt(stream: var) !u28 {
 pub fn metaEvent(stream: var) !midi.file.MetaEvent {
     return midi.file.MetaEvent{
         .kind_byte = try stream.readByte(),
-        .len = try variableLenInt(stream),
+        .len = try int(stream),
     };
 }
 
 pub fn trackEvent(last_event: ?midi.file.TrackEvent, stream: var) !midi.file.TrackEvent {
     var ps = io.PeekStream(1, @typeOf(stream.read(undefined)).ErrorSet).init(stream);
-    const delta_time = try variableLenInt(&ps.stream);
+    const delta_time = try int(&ps.stream);
     const first_byte = try ps.stream.readByte();
     if (first_byte == 0xFF) {
         return midi.file.TrackEvent{
