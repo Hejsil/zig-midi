@@ -34,14 +34,14 @@ pub fn message(stream: var, last_message: ?midi.Message) !midi.Message {
     switch (kind) {
         0x0, 0x1, 0x2, 0x3, 0x6 => return midi.Message{
             .status = status_byte,
-            .values = [2]u8{
+            .values = [2]u7{
                 math.cast(u7, first_byte orelse try stream.readByte()) catch return error.InvalidDataByte,
                 try readDataByte(stream),
             },
         },
         0x4, 0x5 => return midi.Message{
             .status = status_byte,
-            .values = [2]u8{
+            .values = [2]u7{
                 math.cast(u7, first_byte orelse try stream.readByte()) catch return error.InvalidDataByte,
                 0,
             },
@@ -51,18 +51,18 @@ pub fn message(stream: var, last_message: ?midi.Message) !midi.Message {
             switch (channel) {
                 0x0, 0x6, 0x07, 0x8, 0xA, 0xB, 0xC, 0xE, 0xF => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8{ 0, 0 },
+                    .values = [2]u7{ 0, 0 },
                 },
                 0x1, 0x3 => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8{
+                    .values = [2]u7{
                         try readDataByte(stream),
                         0,
                     },
                 },
                 0x2 => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8{
+                    .values = [2]u7{
                         try readDataByte(stream),
                         try readDataByte(stream),
                     },
@@ -71,7 +71,7 @@ pub fn message(stream: var, last_message: ?midi.Message) !midi.Message {
                 // Undefined
                 0x4, 0x5, 0x9, 0xD => return midi.Message{
                     .status = status_byte,
-                    .values = [2]u8{ 0, 0 },
+                    .values = [2]u7{ 0, 0 },
                 },
             }
         },
@@ -86,8 +86,8 @@ pub fn chunk(stream: var) !midi.file.Chunk {
 
 pub fn chunkFromBytes(bytes: [8]u8) midi.file.Chunk {
     return midi.file.Chunk{
-        .kind = @ptrCast(*const [4]u8, bytes[0..4].ptr).*,
-        .len = mem.readIntBig(u32, @ptrCast(*const [4]u8, bytes[4..8].ptr)),
+        .kind = bytes[0..4].*,
+        .len = mem.readIntBig(u32, bytes[4..8]),
     };
 }
 
@@ -98,17 +98,17 @@ pub fn fileHeader(stream: var) !midi.file.Header {
 }
 
 pub fn fileHeaderFromBytes(bytes: [14]u8) !midi.file.Header {
-    const _chunk = chunkFromBytes(@ptrCast(*const [8]u8, bytes[0..8].ptr).*);
-    if (!mem.eql(u8, _chunk.kind, midi.file.Chunk.file_header))
+    const _chunk = chunkFromBytes(bytes[0..8].*);
+    if (!mem.eql(u8, &_chunk.kind, midi.file.Chunk.file_header))
         return error.InvalidFileHeader;
     if (_chunk.len < 6)
         return error.InvalidFileHeader;
 
     return midi.file.Header{
         .chunk = _chunk,
-        .format = mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes[8..10].ptr)),
-        .tracks = mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes[10..12].ptr)),
-        .division = mem.readIntBig(u16, @ptrCast(*const [2]u8, bytes[12..14].ptr)),
+        .format = mem.readIntBig(u16, bytes[8..10]),
+        .tracks = mem.readIntBig(u16, bytes[10..12]),
+        .division = mem.readIntBig(u16, bytes[12..14]),
     };
 }
 
@@ -134,13 +134,15 @@ pub fn metaEvent(stream: var) !midi.file.MetaEvent {
 }
 
 pub fn trackEvent(last_event: ?midi.file.TrackEvent, stream: var) !midi.file.TrackEvent {
-    var ps = io.PeekStream(1, @typeOf(stream.read(undefined)).ErrorSet).init(stream);
-    const delta_time = try int(&ps.stream);
-    const first_byte = try ps.stream.readByte();
+    var peek_stream = io.peekStream(1, stream);
+    var in_stream = peek_stream.inStream();
+
+    const delta_time = try int(&in_stream);
+    const first_byte = try in_stream.readByte();
     if (first_byte == 0xFF) {
         return midi.file.TrackEvent{
             .delta_time = delta_time,
-            .kind = midi.file.TrackEvent.Kind{ .MetaEvent = try metaEvent(&ps.stream) },
+            .kind = midi.file.TrackEvent.Kind{ .MetaEvent = try metaEvent(&in_stream) },
         };
     }
 
@@ -149,9 +151,9 @@ pub fn trackEvent(last_event: ?midi.file.TrackEvent, stream: var) !midi.file.Tra
         .MetaEvent => null,
     } else null;
 
-    ps.putBackByte(first_byte);
+    peek_stream.putBackByte(first_byte) catch unreachable;
     return midi.file.TrackEvent{
         .delta_time = delta_time,
-        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try message(&ps.stream, last_midi_event) },
+        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try message(&in_stream, last_midi_event) },
     };
 }

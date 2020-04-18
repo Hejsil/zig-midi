@@ -7,7 +7,7 @@ const Builder = std.build.Builder;
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
 
-    const fmt_step = b.addFmt([_][]const u8{"."});
+    const fmt_step = b.addFmt(&[_][]const u8{"."});
     b.default_step.dependOn(&fmt_step.step);
 
     const test_all_step = b.step("test", "Run all tests in all modes.");

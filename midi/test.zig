@@ -6,12 +6,13 @@ const mem = std.mem;
 const io = std.io;
 
 const decode = midi.decode;
+const encode = midi.encode;
 const file = midi.file;
 
-test "midi.decode.message" {
-    try testDecodeMessage("\x80\x00\x00" ++
+test "midi.decode/encode.message" {
+    try testMessage("\x80\x00\x00" ++
         "\x7F\x7F" ++
-        "\x8F\x7F\x7F", [_]midi.Message{
+        "\x8F\x7F\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x00,
             .values = [2]u7{ 0x0, 0x0 },
@@ -25,9 +26,9 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x7F },
         },
     });
-    try testDecodeMessage("\x90\x00\x00" ++
+    try testMessage("\x90\x00\x00" ++
         "\x7F\x7F" ++
-        "\x9F\x7F\x7F", [_]midi.Message{
+        "\x9F\x7F\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x10,
             .values = [2]u7{ 0x0, 0x0 },
@@ -41,9 +42,9 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x7F },
         },
     });
-    try testDecodeMessage("\xA0\x00\x00" ++
+    try testMessage("\xA0\x00\x00" ++
         "\x7F\x7F" ++
-        "\xAF\x7F\x7F", [_]midi.Message{
+        "\xAF\x7F\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x20,
             .values = [2]u7{ 0x0, 0x0 },
@@ -57,9 +58,9 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x7F },
         },
     });
-    try testDecodeMessage("\xB0\x00\x00" ++
+    try testMessage("\xB0\x00\x00" ++
         "\x77\x7F" ++
-        "\xBF\x77\x7F", [_]midi.Message{
+        "\xBF\x77\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x30,
             .values = [2]u7{ 0x0, 0x0 },
@@ -73,9 +74,9 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x77, 0x7F },
         },
     });
-    try testDecodeMessage("\xC0\x00" ++
+    try testMessage("\xC0\x00" ++
         "\x7F" ++
-        "\xCF\x7F", [_]midi.Message{
+        "\xCF\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x40,
             .values = [2]u7{ 0x0, 0x0 },
@@ -89,9 +90,9 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x0 },
         },
     });
-    try testDecodeMessage("\xD0\x00" ++
+    try testMessage("\xD0\x00" ++
         "\x7F" ++
-        "\xDF\x7F", [_]midi.Message{
+        "\xDF\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x50,
             .values = [2]u7{ 0x0, 0x0 },
@@ -105,9 +106,9 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x0 },
         },
     });
-    try testDecodeMessage("\xE0\x00\x00" ++
+    try testMessage("\xE0\x00\x00" ++
         "\x7F\x7F" ++
-        "\xEF\x7F\x7F", [_]midi.Message{
+        "\xEF\x7F\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x60,
             .values = [2]u7{ 0x0, 0x0 },
@@ -121,7 +122,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x7F },
         },
     });
-    try testDecodeMessage("\xF0\xF0", [_]midi.Message{
+    try testMessage("\xF0\xF0", &[_]midi.Message{
         midi.Message{
             .status = 0x70,
             .values = [2]u7{ 0x0, 0x0 },
@@ -131,10 +132,10 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xF1\x00" ++
+    try testMessage("\xF1\x00" ++
         "\xF1\x0F" ++
         "\xF1\x70" ++
-        "\xF1\x7F", [_]midi.Message{
+        "\xF1\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x71,
             .values = [2]u7{ 0x0, 0x0 },
@@ -152,8 +153,8 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x0 },
         },
     });
-    try testDecodeMessage("\xF2\x00\x00" ++
-        "\xF2\x7F\x7F", [_]midi.Message{
+    try testMessage("\xF2\x00\x00" ++
+        "\xF2\x7F\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x72,
             .values = [2]u7{ 0x0, 0x0 },
@@ -163,8 +164,8 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x7F },
         },
     });
-    try testDecodeMessage("\xF3\x00" ++
-        "\xF3\x7F", [_]midi.Message{
+    try testMessage("\xF3\x00" ++
+        "\xF3\x7F", &[_]midi.Message{
         midi.Message{
             .status = 0x73,
             .values = [2]u7{ 0x0, 0x0 },
@@ -174,7 +175,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x7F, 0x0 },
         },
     });
-    try testDecodeMessage("\xF6\xF6", [_]midi.Message{
+    try testMessage("\xF6\xF6", &[_]midi.Message{
         midi.Message{
             .status = 0x76,
             .values = [2]u7{ 0x0, 0x0 },
@@ -184,7 +185,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xF7\xF7", [_]midi.Message{
+    try testMessage("\xF7\xF7", &[_]midi.Message{
         midi.Message{
             .status = 0x77,
             .values = [2]u7{ 0x0, 0x0 },
@@ -194,7 +195,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xF8\xF8", [_]midi.Message{
+    try testMessage("\xF8\xF8", &[_]midi.Message{
         midi.Message{
             .status = 0x78,
             .values = [2]u7{ 0x0, 0x0 },
@@ -204,7 +205,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xFA\xFA", [_]midi.Message{
+    try testMessage("\xFA\xFA", &[_]midi.Message{
         midi.Message{
             .status = 0x7A,
             .values = [2]u7{ 0x0, 0x0 },
@@ -214,7 +215,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xFB\xFB", [_]midi.Message{
+    try testMessage("\xFB\xFB", &[_]midi.Message{
         midi.Message{
             .status = 0x7B,
             .values = [2]u7{ 0x0, 0x0 },
@@ -224,7 +225,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xFC\xFC", [_]midi.Message{
+    try testMessage("\xFC\xFC", &[_]midi.Message{
         midi.Message{
             .status = 0x7C,
             .values = [2]u7{ 0x0, 0x0 },
@@ -234,7 +235,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xFE\xFE", [_]midi.Message{
+    try testMessage("\xFE\xFE", &[_]midi.Message{
         midi.Message{
             .status = 0x7E,
             .values = [2]u7{ 0x0, 0x0 },
@@ -244,7 +245,7 @@ test "midi.decode.message" {
             .values = [2]u7{ 0x0, 0x0 },
         },
     });
-    try testDecodeMessage("\xFF\xFF", [_]midi.Message{
+    try testMessage("\xFF\xFF", &[_]midi.Message{
         midi.Message{
             .status = 0x7F,
             .values = [2]u7{ 0x0, 0x0 },
@@ -256,86 +257,74 @@ test "midi.decode.message" {
     });
 }
 
-test "decode.chunkFromBytes" {
-    testing.expectEqual(midi.file.Chunk{
-        .kind = "abcd",
-        .len = 0x04,
-    }, decode.chunkFromBytes("abcd\x00\x00\x00\x04"));
-    testing.expectEqual(midi.file.Chunk{
-        .kind = "efgh",
-        .len = 0x0400,
-    }, decode.chunkFromBytes("efgh\x00\x00\x04\x00"));
-    testing.expectEqual(midi.file.Chunk{
-        .kind = "ijkl",
-        .len = 0x040000,
-    }, decode.chunkFromBytes("ijkl\x00\x04\x00\x00"));
-    testing.expectEqual(midi.file.Chunk{
-        .kind = "mnop",
-        .len = 0x04000000,
-    }, decode.chunkFromBytes("mnop\x04\x00\x00\x00"));
+test "decode/encode file.Chunk" {
+    testChunk("abcd\x00\x00\x00\x04".*, midi.file.Chunk{ .kind = "abcd".*, .len = 0x04 });
+    testChunk("efgh\x00\x00\x04\x00".*, midi.file.Chunk{ .kind = "efgh".*, .len = 0x0400 });
+    testChunk("ijkl\x00\x04\x00\x00".*, midi.file.Chunk{ .kind = "ijkl".*, .len = 0x040000 });
+    testChunk("mnop\x04\x00\x00\x00".*, midi.file.Chunk{ .kind = "mnop".*, .len = 0x04000000 });
 }
 
-test "decode.fileHeaderFromBytes" {
-    testing.expectEqual(midi.file.Header{
+test "decode/encode file.Header" {
+    try testFileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
-            .kind = "MThd",
+            .kind = "MThd".*,
             .len = 6,
         },
         .format = 0,
         .tracks = 0x0001,
         .division = 0x0110,
-    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10"));
-    testing.expectEqual(midi.file.Header{
+    });
+    try testFileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
-            .kind = "MThd",
+            .kind = "MThd".*,
             .len = 6,
         },
         .format = 1,
         .tracks = 0x0101,
         .division = 0x0110,
-    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x01\x01\x01\x01\x10"));
-    testing.expectEqual(midi.file.Header{
+    });
+    try testFileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
-            .kind = "MThd",
+            .kind = "MThd".*,
             .len = 6,
         },
         .format = 2,
         .tracks = 0x0101,
         .division = 0x0110,
-    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x02\x01\x01\x01\x10"));
-    testing.expectEqual(midi.file.Header{
+    });
+    try testFileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
-            .kind = "MThd",
+            .kind = "MThd".*,
             .len = 6,
         },
         .format = 0,
         .tracks = 0x0001,
         .division = 0xFF10,
-    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x00\x00\x01\xFF\x10"));
-    testing.expectEqual(midi.file.Header{
+    });
+    try testFileHeader("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
-            .kind = "MThd",
+            .kind = "MThd".*,
             .len = 6,
         },
         .format = 1,
         .tracks = 0x0101,
         .division = 0xFF10,
-    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x01\x01\x01\xFF\x10"));
-    testing.expectEqual(midi.file.Header{
+    });
+    try testFileHeader("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
-            .kind = "MThd",
+            .kind = "MThd".*,
             .len = 6,
         },
         .format = 2,
         .tracks = 0x0101,
         .division = 0xFF10,
-    }, try decode.fileHeaderFromBytes("MThd\x00\x00\x00\x06\x00\x02\x01\x01\xFF\x10"));
+    });
 
-    testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10"));
+    testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10".*));
 }
 
-test "decode.int" {
-    try testDecodeInt("\x00" ++
+test "decode/encode int" {
+    try testInt("\x00" ++
         "\x40" ++
         "\x7F" ++
         "\x81\x00" ++
@@ -346,7 +335,7 @@ test "decode.int" {
         "\xFF\xFF\x7F" ++
         "\x81\x80\x80\x00" ++
         "\xC0\x80\x80\x00" ++
-        "\xFF\xFF\xFF\x7F", [_]u28{
+        "\xFF\xFF\xFF\x7F", &[_]u28{
         0x00000000,
         0x00000040,
         0x0000007F,
@@ -360,24 +349,11 @@ test "decode.int" {
         0x08000000,
         0x0FFFFFFF,
     });
-
-    testing.expectEqual(u28(0x00000000), try decode.int(&io.SliceInStream.init("\x00\xFF\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00000040), try decode.int(&io.SliceInStream.init("\x40\xFF\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x0000007F), try decode.int(&io.SliceInStream.init("\x7F\xFF\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00000080), try decode.int(&io.SliceInStream.init("\x81\x00\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00002000), try decode.int(&io.SliceInStream.init("\xC0\x00\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00003FFF), try decode.int(&io.SliceInStream.init("\xFF\x7F\xFF\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00004000), try decode.int(&io.SliceInStream.init("\x81\x80\x00\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00100000), try decode.int(&io.SliceInStream.init("\xC0\x80\x00\xFF\xFF").stream));
-    testing.expectEqual(u28(0x001FFFFF), try decode.int(&io.SliceInStream.init("\xFF\xFF\x7F\xFF\xFF").stream));
-    testing.expectEqual(u28(0x00200000), try decode.int(&io.SliceInStream.init("\x81\x80\x80\x00\xFF").stream));
-    testing.expectEqual(u28(0x08000000), try decode.int(&io.SliceInStream.init("\xC0\x80\x80\x00\xFF").stream));
-    testing.expectEqual(u28(0x0FFFFFFF), try decode.int(&io.SliceInStream.init("\xFF\xFF\xFF\x7F\xFF").stream));
 }
 
 test "decode.metaEvent" {
     try testDecodeMetaEvent("\x00\x00" ++
-        "\x00\x02", [_]midi.file.MetaEvent{
+        "\x00\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0,
             .len = 0,
@@ -388,7 +364,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x01\x00" ++
-        "\x01\x02", [_]midi.file.MetaEvent{
+        "\x01\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 1,
             .len = 0,
@@ -399,7 +375,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x02\x00" ++
-        "\x02\x02", [_]midi.file.MetaEvent{
+        "\x02\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 2,
             .len = 0,
@@ -410,7 +386,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x03\x00" ++
-        "\x03\x02", [_]midi.file.MetaEvent{
+        "\x03\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 3,
             .len = 0,
@@ -421,7 +397,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x04\x00" ++
-        "\x04\x02", [_]midi.file.MetaEvent{
+        "\x04\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 4,
             .len = 0,
@@ -432,7 +408,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x05\x00" ++
-        "\x05\x02", [_]midi.file.MetaEvent{
+        "\x05\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 5,
             .len = 0,
@@ -443,7 +419,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x06\x00" ++
-        "\x06\x02", [_]midi.file.MetaEvent{
+        "\x06\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 6,
             .len = 0,
@@ -454,7 +430,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x20\x00" ++
-        "\x20\x02", [_]midi.file.MetaEvent{
+        "\x20\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x20,
             .len = 0,
@@ -465,7 +441,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x2F\x00" ++
-        "\x2F\x02", [_]midi.file.MetaEvent{
+        "\x2F\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x2F,
             .len = 0,
@@ -476,7 +452,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x51\x00" ++
-        "\x51\x02", [_]midi.file.MetaEvent{
+        "\x51\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x51,
             .len = 0,
@@ -487,7 +463,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x54\x00" ++
-        "\x54\x02", [_]midi.file.MetaEvent{
+        "\x54\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x54,
             .len = 0,
@@ -498,7 +474,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x58\x00" ++
-        "\x58\x02", [_]midi.file.MetaEvent{
+        "\x58\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x58,
             .len = 0,
@@ -509,7 +485,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x59\x00" ++
-        "\x59\x02", [_]midi.file.MetaEvent{
+        "\x59\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x59,
             .len = 0,
@@ -520,7 +496,7 @@ test "decode.metaEvent" {
         },
     });
     try testDecodeMetaEvent("\x7F\x00" ++
-        "\x7F\x02", [_]midi.file.MetaEvent{
+        "\x7F\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x7F,
             .len = 0,
@@ -534,7 +510,7 @@ test "decode.metaEvent" {
 
 test "decode.trackEvent" {
     try testDecodeTrackEvent("\x00\xFF\x00\x00" ++
-        "\x00\xFF\x00\x02", [_]midi.file.TrackEvent{
+        "\x00\xFF\x00\x02", &[_]midi.file.TrackEvent{
         midi.file.TrackEvent{
             .delta_time = 0,
             .kind = midi.file.TrackEvent.Kind{
@@ -556,7 +532,7 @@ test "decode.trackEvent" {
     });
     try testDecodeTrackEvent("\x00\x80\x00\x00" ++
         "\x00\x7F\x7F" ++
-        "\x00\xFF\x00\x02", [_]midi.file.TrackEvent{
+        "\x00\xFF\x00\x02", &[_]midi.file.TrackEvent{
         midi.file.TrackEvent{
             .delta_time = 0,
             .kind = midi.file.TrackEvent.Kind{
@@ -587,43 +563,59 @@ test "decode.trackEvent" {
     });
 }
 
-fn testDecodeMessage(bytes: []const u8, results: []const midi.Message) !void {
+fn testMessage(bytes: []const u8, results: []const midi.Message) !void {
     var last: ?midi.Message = null;
-    var stream = io.SliceInStream.init(bytes);
+    var out_buf: [1024]u8 = undefined;
+    var fb_out_stream = io.fixedBufferStream(&out_buf);
+    const out_stream = fb_out_stream.outStream();
+    const in_stream = io.fixedBufferStream(bytes).inStream();
     for (results) |expected| {
-        const actual = try decode.message(&stream.stream, last);
+        const actual = try decode.message(in_stream, last);
+        try encode.message(out_stream, last, actual);
         testing.expectEqual(expected, actual);
         last = actual;
     }
 
-    testing.expectError(error.EndOfStream, stream.stream.readByte());
+    testing.expectError(error.EndOfStream, in_stream.readByte());
+    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
 }
 
-fn testDecodeInt(bytes: []const u8, results: []const u28) !void {
-    var stream = io.SliceInStream.init(bytes);
+fn testInt(bytes: []const u8, results: []const u28) !void {
+    var out_buf: [1024]u8 = undefined;
+    var fb_in_stream = io.fixedBufferStream(bytes);
+    const in_stream = fb_in_stream.inStream();
     for (results) |expected| {
-        const actual = try decode.int(&stream.stream);
+        var fb_out_stream = io.fixedBufferStream(&out_buf);
+        const out_stream = fb_out_stream.outStream();
+
+        const before = fb_in_stream.pos;
+        const actual = try decode.int(in_stream);
+        const after = fb_in_stream.pos;
+
+        try encode.int(out_stream, actual);
+
         testing.expectEqual(expected, actual);
+        testing.expectEqualSlices(u8, bytes[before..after], fb_out_stream.getWritten());
     }
 
-    testing.expectError(error.EndOfStream, stream.stream.readByte());
+    testing.expectError(error.EndOfStream, in_stream.readByte());
 }
 
 fn testDecodeMetaEvent(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
-    var stream = io.SliceInStream.init(bytes);
+    var stream = io.fixedBufferStream(bytes).inStream();
     for (results) |expected| {
-        const actual = try decode.metaEvent(&stream.stream);
+        const actual = try decode.metaEvent(stream);
         testing.expectEqual(expected, actual);
     }
 
-    testing.expectError(error.EndOfStream, stream.stream.readByte());
+    testing.expectError(error.EndOfStream, stream.readByte());
 }
 
 fn testDecodeTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent) !void {
     var last: ?midi.file.TrackEvent = null;
-    var stream = io.SliceInStream.init(bytes);
+    var stream = io.fixedBufferStream(bytes).inStream();
     for (results) |expected| {
-        const actual = try decode.trackEvent(last, &stream.stream);
+        const actual = try decode.trackEvent(last, stream);
         testing.expectEqual(expected.delta_time, actual.delta_time);
         switch (expected.kind) {
             .MetaEvent => testing.expectEqual(expected.kind.MetaEvent, actual.kind.MetaEvent),
@@ -632,5 +624,19 @@ fn testDecodeTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent
         last = actual;
     }
 
-    testing.expectError(error.EndOfStream, stream.stream.readByte());
+    testing.expectError(error.EndOfStream, stream.readByte());
+}
+
+fn testChunk(bytes: [8]u8, chunk: midi.file.Chunk) void {
+    const decoded = decode.chunkFromBytes(bytes);
+    const encoded = encode.chunkToBytes(chunk);
+    testing.expectEqual(bytes, encoded);
+    testing.expectEqual(chunk, decoded);
+}
+
+fn testFileHeader(bytes: [14]u8, header: midi.file.Header) !void {
+    const decoded = try decode.fileHeaderFromBytes(bytes);
+    const encoded = encode.fileHeaderToBytes(header);
+    testing.expectEqual(bytes, encoded);
+    testing.expectEqual(header, decoded);
 }
