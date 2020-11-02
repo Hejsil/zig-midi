@@ -8,13 +8,23 @@ const io = std.io;
 
 const encode = @This();
 
-pub fn message(stream: var, last_message: ?midi.Message, msg: midi.Message) !void {
+pub fn message(stream: anytype, last_message: ?midi.Message, msg: midi.Message) !void {
     if (msg.channel() == null or last_message == null or msg.status != last_message.?.status) {
         try stream.writeByte((1 << 7) | @as(u8, msg.status));
     }
 
     switch (msg.kind()) {
-        .ExclusiveStart, .TuneRequest, .ExclusiveEnd, .TimingClock, .Start, .Continue, .Stop, .ActiveSensing, .Reset, .Undefined => {},
+        .ExclusiveStart,
+        .TuneRequest,
+        .ExclusiveEnd,
+        .TimingClock,
+        .Start,
+        .Continue,
+        .Stop,
+        .ActiveSensing,
+        .Reset,
+        .Undefined,
+        => {},
         .ProgramChange,
         .ChannelPressure,
         .MidiTimeCodeQuarterFrame,
@@ -51,7 +61,7 @@ pub fn fileHeaderToBytes(header: midi.file.Header) [14]u8 {
     return res;
 }
 
-pub fn int(stream: var, i: u28) !void {
+pub fn int(stream: anytype, i: u28) !void {
     var tmp = i;
     var is_first = true;
     var buf: [4]u8 = undefined;
@@ -65,4 +75,46 @@ pub fn int(stream: var, i: u28) !void {
     }
     mem.reverse(u8, fbs.getWritten());
     try stream.writeAll(fbs.getWritten());
+}
+
+pub fn metaEvent(stream: anytype, event: midi.file.MetaEvent) !void {
+    try stream.writeByte(event.kind_byte);
+    try int(stream, event.len);
+}
+
+pub fn trackEvent(stream: anytype, last_event: ?midi.file.TrackEvent, event: midi.file.TrackEvent) !void {
+    const last_midi_event = if (last_event) |e| switch (e.kind) {
+        .MidiEvent => |m| m,
+        .MetaEvent => null,
+    } else null;
+
+    try int(stream, event.delta_time);
+    switch (event.kind) {
+        .MetaEvent => |meta| {
+            try stream.writeByte(0xFF);
+            try metaEvent(stream, meta);
+        },
+        .MidiEvent => |msg| try message(stream, last_midi_event, msg),
+    }
+}
+
+pub fn file(stream: anytype, f: midi.File) !void {
+    try stream.writeAll(&encode.fileHeaderToBytes(.{
+        .chunk = .{
+            .kind = midi.file.Chunk.file_header.*,
+            .len = @intCast(u32, midi.file.Header.size + f.header_data.len),
+        },
+        .format = f.format,
+        .tracks = @intCast(u16, f.chunks.len),
+        .division = f.division,
+    }));
+    try stream.writeAll(f.header_data);
+
+    for (f.chunks) |c| {
+        try stream.writeAll(&encode.chunkToBytes(.{
+            .kind = c.kind,
+            .len = @intCast(u32, c.bytes.len),
+        }));
+        try stream.writeAll(c.bytes);
+    }
 }

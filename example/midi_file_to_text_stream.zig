@@ -15,7 +15,7 @@ pub fn main() !void {
     // The midi standard says that we should respect the headers size, even if it
     // is bigger than nessesary. We therefor need to figure out what to do with the
     // extra bytes in the header. This example will just skip them.
-    try stdin.skipBytes(header.chunk.len - midi.file.Header.size);
+    try stdin.skipBytes(header.chunk.len - midi.file.Header.size, .{});
 
     while (true) {
         const chunk = midi.decode.chunk(stdin) catch |err| switch (err) {
@@ -29,7 +29,7 @@ pub fn main() !void {
 
         // If our chunk isn't a track header, we just skip it.
         if (!std.mem.eql(u8, &chunk.kind, midi.file.Chunk.track_header)) {
-            try stdin.skipBytes(chunk.len);
+            try stdin.skipBytes(chunk.len, .{});
             continue;
         }
 
@@ -38,7 +38,7 @@ pub fn main() !void {
         // is repeated.
         var last_event: ?midi.file.TrackEvent = null;
         while (true) {
-            const event = try midi.decode.trackEvent(last_event, stdin);
+            const event = try midi.decode.trackEvent(stdin, last_event);
             last_event = event;
 
             std.debug.warn("  {:>6}", .{event.delta_time});

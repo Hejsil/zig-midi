@@ -257,14 +257,14 @@ test "midi.decode/encode.message" {
     });
 }
 
-test "decode/encode file.Chunk" {
+test "midi.decode/encode.chunk" {
     testChunk("abcd\x00\x00\x00\x04".*, midi.file.Chunk{ .kind = "abcd".*, .len = 0x04 });
     testChunk("efgh\x00\x00\x04\x00".*, midi.file.Chunk{ .kind = "efgh".*, .len = 0x0400 });
     testChunk("ijkl\x00\x04\x00\x00".*, midi.file.Chunk{ .kind = "ijkl".*, .len = 0x040000 });
     testChunk("mnop\x04\x00\x00\x00".*, midi.file.Chunk{ .kind = "mnop".*, .len = 0x04000000 });
 }
 
-test "decode/encode file.Header" {
+test "midi.decode/encode.fileHeader" {
     try testFileHeader("MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\x10".*, midi.file.Header{
         .chunk = midi.file.Chunk{
             .kind = "MThd".*,
@@ -323,7 +323,7 @@ test "decode/encode file.Header" {
     testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10".*));
 }
 
-test "decode/encode int" {
+test "midi.decode/encode.int" {
     try testInt("\x00" ++
         "\x40" ++
         "\x7F" ++
@@ -351,8 +351,8 @@ test "decode/encode int" {
     });
 }
 
-test "decode.metaEvent" {
-    try testDecodeMetaEvent("\x00\x00" ++
+test "midi.decode/encode.metaEvent" {
+    try testMetaEvent("\x00\x00" ++
         "\x00\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0,
@@ -363,7 +363,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x01\x00" ++
+    try testMetaEvent("\x01\x00" ++
         "\x01\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 1,
@@ -374,7 +374,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x02\x00" ++
+    try testMetaEvent("\x02\x00" ++
         "\x02\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 2,
@@ -385,7 +385,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x03\x00" ++
+    try testMetaEvent("\x03\x00" ++
         "\x03\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 3,
@@ -396,7 +396,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x04\x00" ++
+    try testMetaEvent("\x04\x00" ++
         "\x04\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 4,
@@ -407,7 +407,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x05\x00" ++
+    try testMetaEvent("\x05\x00" ++
         "\x05\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 5,
@@ -418,7 +418,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x06\x00" ++
+    try testMetaEvent("\x06\x00" ++
         "\x06\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 6,
@@ -429,7 +429,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x20\x00" ++
+    try testMetaEvent("\x20\x00" ++
         "\x20\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x20,
@@ -440,7 +440,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x2F\x00" ++
+    try testMetaEvent("\x2F\x00" ++
         "\x2F\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x2F,
@@ -451,7 +451,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x51\x00" ++
+    try testMetaEvent("\x51\x00" ++
         "\x51\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x51,
@@ -462,7 +462,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x54\x00" ++
+    try testMetaEvent("\x54\x00" ++
         "\x54\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x54,
@@ -473,7 +473,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x58\x00" ++
+    try testMetaEvent("\x58\x00" ++
         "\x58\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x58,
@@ -484,7 +484,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x59\x00" ++
+    try testMetaEvent("\x59\x00" ++
         "\x59\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x59,
@@ -495,7 +495,7 @@ test "decode.metaEvent" {
             .len = 2,
         },
     });
-    try testDecodeMetaEvent("\x7F\x00" ++
+    try testMetaEvent("\x7F\x00" ++
         "\x7F\x02", &[_]midi.file.MetaEvent{
         midi.file.MetaEvent{
             .kind_byte = 0x7F,
@@ -508,8 +508,8 @@ test "decode.metaEvent" {
     });
 }
 
-test "decode.trackEvent" {
-    try testDecodeTrackEvent("\x00\xFF\x00\x00" ++
+test "midi.decode/encode.trackEvent" {
+    try testTrackEvent("\x00\xFF\x00\x00" ++
         "\x00\xFF\x00\x02", &[_]midi.file.TrackEvent{
         midi.file.TrackEvent{
             .delta_time = 0,
@@ -530,7 +530,7 @@ test "decode.trackEvent" {
             },
         },
     });
-    try testDecodeTrackEvent("\x00\x80\x00\x00" ++
+    try testTrackEvent("\x00\x80\x00\x00" ++
         "\x00\x7F\x7F" ++
         "\x00\xFF\x00\x02", &[_]midi.file.TrackEvent{
         midi.file.TrackEvent{
@@ -561,6 +561,37 @@ test "decode.trackEvent" {
             },
         },
     });
+}
+
+test "midi.decode/encode.file" {
+    try testFile(
+        // File header
+        "MThd\x00\x00\x00\x08\x00\x02\x00\x02\xFF\x10\xFF\xFF" ++
+            // Random chunk
+            "abcd\x00\x00\x00\x04\xFF\xFF\xFF\xFF" ++
+            // Track
+            "MTrk\x00\x00\x00\x17" ++
+            "\x00\xFF\x00\x00" ++
+            "\x00\xFF\x00\x02\xaa\xbb" ++
+            "\x00\x80\x00\x00" ++
+            "\x00\x7F\x7F" ++
+            "\x00\xFF\x00\x02\xaa\xbb",
+    );
+}
+
+fn testFile(bytes: []const u8) !void {
+    var out_buf: [1024]u8 = undefined;
+    var fb_out_stream = io.fixedBufferStream(&out_buf);
+    const out_stream = fb_out_stream.outStream();
+    const in_stream = io.fixedBufferStream(bytes).inStream();
+    const allocator = testing.allocator;
+
+    const actual = try decode.file(in_stream, allocator);
+    defer actual.deinit(allocator);
+    try encode.file(out_stream, actual);
+
+    testing.expectError(error.EndOfStream, in_stream.readByte());
+    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
 }
 
 fn testMessage(bytes: []const u8, results: []const midi.Message) !void {
@@ -601,21 +632,30 @@ fn testInt(bytes: []const u8, results: []const u28) !void {
     testing.expectError(error.EndOfStream, in_stream.readByte());
 }
 
-fn testDecodeMetaEvent(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
-    var stream = io.fixedBufferStream(bytes).inStream();
+fn testMetaEvent(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
+    var out_buf: [1024]u8 = undefined;
+    var fb_out_stream = io.fixedBufferStream(&out_buf);
+    const out_stream = fb_out_stream.outStream();
+    const in_stream = io.fixedBufferStream(bytes).inStream();
     for (results) |expected| {
-        const actual = try decode.metaEvent(stream);
+        const actual = try decode.metaEvent(in_stream);
+        try encode.metaEvent(out_stream, actual);
         testing.expectEqual(expected, actual);
     }
 
-    testing.expectError(error.EndOfStream, stream.readByte());
+    testing.expectError(error.EndOfStream, in_stream.readByte());
+    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
 }
 
-fn testDecodeTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent) !void {
+fn testTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent) !void {
     var last: ?midi.file.TrackEvent = null;
-    var stream = io.fixedBufferStream(bytes).inStream();
+    var out_buf: [1024]u8 = undefined;
+    var fb_out_stream = io.fixedBufferStream(&out_buf);
+    const out_stream = fb_out_stream.outStream();
+    const in_stream = io.fixedBufferStream(bytes).inStream();
     for (results) |expected| {
-        const actual = try decode.trackEvent(last, stream);
+        const actual = try decode.trackEvent(in_stream, last);
+        try encode.trackEvent(out_stream, last, actual);
         testing.expectEqual(expected.delta_time, actual.delta_time);
         switch (expected.kind) {
             .MetaEvent => testing.expectEqual(expected.kind.MetaEvent, actual.kind.MetaEvent),
@@ -624,7 +664,8 @@ fn testDecodeTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent
         last = actual;
     }
 
-    testing.expectError(error.EndOfStream, stream.readByte());
+    testing.expectError(error.EndOfStream, in_stream.readByte());
+    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
 }
 
 fn testChunk(bytes: [8]u8, chunk: midi.file.Chunk) void {

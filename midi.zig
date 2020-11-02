@@ -12,6 +12,8 @@ test "midi" {
     _ = file;
 }
 
+pub const File = file.File;
+
 pub const Message = struct {
     status: u7,
     values: [2]u7,
@@ -51,13 +53,44 @@ pub const Message = struct {
         const _channel = @truncate(u4, message.status);
         switch (_kind) {
             // Channel events
-            .NoteOff, .NoteOn, .PolyphonicKeyPressure, .ControlChange, .ProgramChange, .ChannelPressure, .PitchBendChange => return _channel,
+            .NoteOff,
+            .NoteOn,
+            .PolyphonicKeyPressure,
+            .ControlChange,
+            .ProgramChange,
+            .ChannelPressure,
+            .PitchBendChange,
+            => return _channel,
 
             // System events
-            .ExclusiveStart, .MidiTimeCodeQuarterFrame, .SongPositionPointer, .SongSelect, .TuneRequest, .ExclusiveEnd, .TimingClock, .Start, .Continue, .Stop, .ActiveSensing, .Reset => return null,
+            .ExclusiveStart,
+            .MidiTimeCodeQuarterFrame,
+            .SongPositionPointer,
+            .SongSelect,
+            .TuneRequest,
+            .ExclusiveEnd,
+            .TimingClock,
+            .Start,
+            .Continue,
+            .Stop,
+            .ActiveSensing,
+            .Reset,
+            => return null,
 
             .Undefined => return null,
         }
+    }
+
+    pub fn value(message: Message) u14 {
+        // TODO: Is this the right order according to the midi spec?
+        return @as(u14, message.values[0]) << 7 | message.values[1];
+    }
+
+    pub fn setValue(message: *Message, v: u14) void {
+        message.values = .{
+            @truncate(u7, v >> 7),
+            @truncate(u7, v),
+        };
     }
 
     pub const Kind = enum {
