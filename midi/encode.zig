@@ -1,16 +1,16 @@
-const std = @import("std");
 const midi = @import("../midi.zig");
+const std = @import("std");
 
 const debug = std.debug;
+const io = std.io;
 const math = std.math;
 const mem = std.mem;
-const io = std.io;
 
 const encode = @This();
 
-pub fn message(stream: anytype, last_message: ?midi.Message, msg: midi.Message) !void {
+pub fn message(writer: anytype, last_message: ?midi.Message, msg: midi.Message) !void {
     if (msg.channel() == null or last_message == null or msg.status != last_message.?.status) {
-        try stream.writeByte((1 << 7) | @as(u8, msg.status));
+        try writer.writeByte((1 << 7) | @as(u8, msg.status));
     }
 
     switch (msg.kind()) {
@@ -30,7 +30,7 @@ pub fn message(stream: anytype, last_message: ?midi.Message, msg: midi.Message) 
         .MidiTimeCodeQuarterFrame,
         .SongSelect,
         => {
-            try stream.writeByte(msg.values[0]);
+            try writer.writeByte(msg.values[0]);
         },
         .NoteOff,
         .NoteOn,
@@ -39,8 +39,8 @@ pub fn message(stream: anytype, last_message: ?midi.Message, msg: midi.Message) 
         .PitchBendChange,
         .SongPositionPointer,
         => {
-            try stream.writeByte(msg.values[0]);
-            try stream.writeByte(msg.values[1]);
+            try writer.writeByte(msg.values[0]);
+            try writer.writeByte(msg.values[1]);
         },
     }
 }
@@ -61,45 +61,45 @@ pub fn fileHeaderToBytes(header: midi.file.Header) [14]u8 {
     return res;
 }
 
-pub fn int(stream: anytype, i: u28) !void {
+pub fn int(writer: anytype, i: u28) !void {
     var tmp = i;
     var is_first = true;
     var buf: [4]u8 = undefined;
-    var fbs = io.fixedBufferStream(&buf);
-    const fbstream = fbs.outStream();
+    var fbs = io.fixedBufferStream(&buf).writer();
 
     // TODO: Can we find a way to not encode this in reverse order and then flipping the bytes?
     while (tmp != 0 or is_first) : (is_first = false) {
-        fbstream.writeByte(@truncate(u7, tmp) | (@as(u8, 1 << 7) * @boolToInt(!is_first))) catch unreachable;
+        fbs.writeByte(@truncate(u7, tmp) | (@as(u8, 1 << 7) * @boolToInt(!is_first))) catch
+            unreachable;
         tmp >>= 7;
     }
-    mem.reverse(u8, fbs.getWritten());
-    try stream.writeAll(fbs.getWritten());
+    mem.reverse(u8, fbs.context.getWritten());
+    try writer.writeAll(fbs.context.getWritten());
 }
 
-pub fn metaEvent(stream: anytype, event: midi.file.MetaEvent) !void {
-    try stream.writeByte(event.kind_byte);
-    try int(stream, event.len);
+pub fn metaEvent(writer: anytype, event: midi.file.MetaEvent) !void {
+    try writer.writeByte(event.kind_byte);
+    try int(writer, event.len);
 }
 
-pub fn trackEvent(stream: anytype, last_event: ?midi.file.TrackEvent, event: midi.file.TrackEvent) !void {
+pub fn trackEvent(writer: anytype, last_event: ?midi.file.TrackEvent, event: midi.file.TrackEvent) !void {
     const last_midi_event = if (last_event) |e| switch (e.kind) {
         .MidiEvent => |m| m,
         .MetaEvent => null,
     } else null;
 
-    try int(stream, event.delta_time);
+    try int(writer, event.delta_time);
     switch (event.kind) {
         .MetaEvent => |meta| {
-            try stream.writeByte(0xFF);
-            try metaEvent(stream, meta);
+            try writer.writeByte(0xFF);
+            try metaEvent(writer, meta);
         },
-        .MidiEvent => |msg| try message(stream, last_midi_event, msg),
+        .MidiEvent => |msg| try message(writer, last_midi_event, msg),
     }
 }
 
-pub fn file(stream: anytype, f: midi.File) !void {
-    try stream.writeAll(&encode.fileHeaderToBytes(.{
+pub fn file(writer: anytype, f: midi.File) !void {
+    try writer.writeAll(&encode.fileHeaderToBytes(.{
         .chunk = .{
             .kind = midi.file.Chunk.file_header.*,
             .len = @intCast(u32, midi.file.Header.size + f.header_data.len),
@@ -108,13 +108,13 @@ pub fn file(stream: anytype, f: midi.File) !void {
         .tracks = @intCast(u16, f.chunks.len),
         .division = f.division,
     }));
-    try stream.writeAll(f.header_data);
+    try writer.writeAll(f.header_data);
 
     for (f.chunks) |c| {
-        try stream.writeAll(&encode.chunkToBytes(.{
+        try writer.writeAll(&encode.chunkToBytes(.{
             .kind = c.kind,
             .len = @intCast(u32, c.bytes.len),
         }));
-        try stream.writeAll(c.bytes);
+        try writer.writeAll(c.bytes);
     }
 }

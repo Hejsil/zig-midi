@@ -1,9 +1,9 @@
-const std = @import("std");
 const midi = @import("../midi.zig");
+const std = @import("std");
 
-const testing = std.testing;
-const mem = std.mem;
 const io = std.io;
+const mem = std.mem;
+const testing = std.testing;
 
 const decode = midi.decode;
 const encode = midi.encode;
@@ -258,10 +258,10 @@ test "midi.decode/encode.message" {
 }
 
 test "midi.decode/encode.chunk" {
-    testChunk("abcd\x00\x00\x00\x04".*, midi.file.Chunk{ .kind = "abcd".*, .len = 0x04 });
-    testChunk("efgh\x00\x00\x04\x00".*, midi.file.Chunk{ .kind = "efgh".*, .len = 0x0400 });
-    testChunk("ijkl\x00\x04\x00\x00".*, midi.file.Chunk{ .kind = "ijkl".*, .len = 0x040000 });
-    testChunk("mnop\x04\x00\x00\x00".*, midi.file.Chunk{ .kind = "mnop".*, .len = 0x04000000 });
+    try testChunk("abcd\x00\x00\x00\x04".*, midi.file.Chunk{ .kind = "abcd".*, .len = 0x04 });
+    try testChunk("efgh\x00\x00\x04\x00".*, midi.file.Chunk{ .kind = "efgh".*, .len = 0x0400 });
+    try testChunk("ijkl\x00\x04\x00\x00".*, midi.file.Chunk{ .kind = "ijkl".*, .len = 0x040000 });
+    try testChunk("mnop\x04\x00\x00\x00".*, midi.file.Chunk{ .kind = "mnop".*, .len = 0x04000000 });
 }
 
 test "midi.decode/encode.fileHeader" {
@@ -320,7 +320,7 @@ test "midi.decode/encode.fileHeader" {
         .division = 0xFF10,
     });
 
-    testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10".*));
+    try testing.expectError(error.InvalidFileHeader, decode.fileHeaderFromBytes("MThd\x00\x00\x00\x05\x00\x00\x00\x01\x01\x10".*));
 }
 
 test "midi.decode/encode.int" {
@@ -581,103 +581,103 @@ test "midi.decode/encode.file" {
 
 fn testFile(bytes: []const u8) !void {
     var out_buf: [1024]u8 = undefined;
-    var fb_out_stream = io.fixedBufferStream(&out_buf);
-    const out_stream = fb_out_stream.outStream();
-    const in_stream = io.fixedBufferStream(bytes).inStream();
+    var fb_writer = io.fixedBufferStream(&out_buf);
+    const writer = fb_writer.writer();
+    const reader = io.fixedBufferStream(bytes).reader();
     const allocator = testing.allocator;
 
-    const actual = try decode.file(in_stream, allocator);
+    const actual = try decode.file(reader, allocator);
     defer actual.deinit(allocator);
-    try encode.file(out_stream, actual);
+    try encode.file(writer, actual);
 
-    testing.expectError(error.EndOfStream, in_stream.readByte());
-    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
+    try testing.expectError(error.EndOfStream, reader.readByte());
+    try testing.expectEqualSlices(u8, bytes, fb_writer.getWritten());
 }
 
 fn testMessage(bytes: []const u8, results: []const midi.Message) !void {
     var last: ?midi.Message = null;
     var out_buf: [1024]u8 = undefined;
-    var fb_out_stream = io.fixedBufferStream(&out_buf);
-    const out_stream = fb_out_stream.outStream();
-    const in_stream = io.fixedBufferStream(bytes).inStream();
+    var fb_writer = io.fixedBufferStream(&out_buf);
+    const writer = fb_writer.writer();
+    const reader = io.fixedBufferStream(bytes).reader();
     for (results) |expected| {
-        const actual = try decode.message(in_stream, last);
-        try encode.message(out_stream, last, actual);
-        testing.expectEqual(expected, actual);
+        const actual = try decode.message(reader, last);
+        try encode.message(writer, last, actual);
+        try testing.expectEqual(expected, actual);
         last = actual;
     }
 
-    testing.expectError(error.EndOfStream, in_stream.readByte());
-    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
+    try testing.expectError(error.EndOfStream, reader.readByte());
+    try testing.expectEqualSlices(u8, bytes, fb_writer.getWritten());
 }
 
 fn testInt(bytes: []const u8, results: []const u28) !void {
     var out_buf: [1024]u8 = undefined;
-    var fb_in_stream = io.fixedBufferStream(bytes);
-    const in_stream = fb_in_stream.inStream();
+    var fb_reader = io.fixedBufferStream(bytes);
+    const reader = fb_reader.reader();
     for (results) |expected| {
-        var fb_out_stream = io.fixedBufferStream(&out_buf);
-        const out_stream = fb_out_stream.outStream();
+        var fb_writer = io.fixedBufferStream(&out_buf);
+        const writer = fb_writer.writer();
 
-        const before = fb_in_stream.pos;
-        const actual = try decode.int(in_stream);
-        const after = fb_in_stream.pos;
+        const before = fb_reader.pos;
+        const actual = try decode.int(reader);
+        const after = fb_reader.pos;
 
-        try encode.int(out_stream, actual);
+        try encode.int(writer, actual);
 
-        testing.expectEqual(expected, actual);
-        testing.expectEqualSlices(u8, bytes[before..after], fb_out_stream.getWritten());
+        try testing.expectEqual(expected, actual);
+        try testing.expectEqualSlices(u8, bytes[before..after], fb_writer.getWritten());
     }
 
-    testing.expectError(error.EndOfStream, in_stream.readByte());
+    try testing.expectError(error.EndOfStream, reader.readByte());
 }
 
 fn testMetaEvent(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
     var out_buf: [1024]u8 = undefined;
-    var fb_out_stream = io.fixedBufferStream(&out_buf);
-    const out_stream = fb_out_stream.outStream();
-    const in_stream = io.fixedBufferStream(bytes).inStream();
+    var fb_writer = io.fixedBufferStream(&out_buf);
+    const writer = fb_writer.writer();
+    const reader = io.fixedBufferStream(bytes).reader();
     for (results) |expected| {
-        const actual = try decode.metaEvent(in_stream);
-        try encode.metaEvent(out_stream, actual);
-        testing.expectEqual(expected, actual);
+        const actual = try decode.metaEvent(reader);
+        try encode.metaEvent(writer, actual);
+        try testing.expectEqual(expected, actual);
     }
 
-    testing.expectError(error.EndOfStream, in_stream.readByte());
-    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
+    try testing.expectError(error.EndOfStream, reader.readByte());
+    try testing.expectEqualSlices(u8, bytes, fb_writer.getWritten());
 }
 
 fn testTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent) !void {
     var last: ?midi.file.TrackEvent = null;
     var out_buf: [1024]u8 = undefined;
-    var fb_out_stream = io.fixedBufferStream(&out_buf);
-    const out_stream = fb_out_stream.outStream();
-    const in_stream = io.fixedBufferStream(bytes).inStream();
+    var fb_writer = io.fixedBufferStream(&out_buf);
+    const writer = fb_writer.writer();
+    const reader = io.fixedBufferStream(bytes).reader();
     for (results) |expected| {
-        const actual = try decode.trackEvent(in_stream, last);
-        try encode.trackEvent(out_stream, last, actual);
-        testing.expectEqual(expected.delta_time, actual.delta_time);
+        const actual = try decode.trackEvent(reader, last);
+        try encode.trackEvent(writer, last, actual);
+        try testing.expectEqual(expected.delta_time, actual.delta_time);
         switch (expected.kind) {
-            .MetaEvent => testing.expectEqual(expected.kind.MetaEvent, actual.kind.MetaEvent),
-            .MidiEvent => testing.expectEqual(expected.kind.MidiEvent, actual.kind.MidiEvent),
+            .MetaEvent => try testing.expectEqual(expected.kind.MetaEvent, actual.kind.MetaEvent),
+            .MidiEvent => try testing.expectEqual(expected.kind.MidiEvent, actual.kind.MidiEvent),
         }
         last = actual;
     }
 
-    testing.expectError(error.EndOfStream, in_stream.readByte());
-    testing.expectEqualSlices(u8, bytes, fb_out_stream.getWritten());
+    try testing.expectError(error.EndOfStream, reader.readByte());
+    try testing.expectEqualSlices(u8, bytes, fb_writer.getWritten());
 }
 
-fn testChunk(bytes: [8]u8, chunk: midi.file.Chunk) void {
+fn testChunk(bytes: [8]u8, chunk: midi.file.Chunk) !void {
     const decoded = decode.chunkFromBytes(bytes);
     const encoded = encode.chunkToBytes(chunk);
-    testing.expectEqual(bytes, encoded);
-    testing.expectEqual(chunk, decoded);
+    try testing.expectEqual(bytes, encoded);
+    try testing.expectEqual(chunk, decoded);
 }
 
 fn testFileHeader(bytes: [14]u8, header: midi.file.Header) !void {
     const decoded = try decode.fileHeaderFromBytes(bytes);
     const encoded = encode.fileHeaderToBytes(header);
-    testing.expectEqual(bytes, encoded);
-    testing.expectEqual(header, decoded);
+    try testing.expectEqual(bytes, encoded);
+    try testing.expectEqual(header, decoded);
 }

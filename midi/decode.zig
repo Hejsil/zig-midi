@@ -1,10 +1,10 @@
-const std = @import("std");
 const midi = @import("../midi.zig");
+const std = @import("std");
 
 const debug = std.debug;
+const io = std.io;
 const math = std.math;
 const mem = std.mem;
-const io = std.io;
 
 const decode = @This();
 
@@ -15,12 +15,12 @@ fn statusByte(b: u8) ?u7 {
     return null;
 }
 
-fn readDataByte(stream: anytype) !u7 {
-    return math.cast(u7, try stream.readByte()) catch return error.InvalidDataByte;
+fn readDataByte(reader: anytype) !u7 {
+    return math.cast(u7, try reader.readByte()) catch return error.InvalidDataByte;
 }
 
-pub fn message(stream: anytype, last_message: ?midi.Message) !midi.Message {
-    var first_byte: ?u8 = try stream.readByte();
+pub fn message(reader: anytype, last_message: ?midi.Message) !midi.Message {
+    var first_byte: ?u8 = try reader.readByte();
     const status_byte = if (statusByte(first_byte.?)) |status_byte| blk: {
         first_byte = null;
         break :blk status_byte;
@@ -37,14 +37,14 @@ pub fn message(stream: anytype, last_message: ?midi.Message) !midi.Message {
         0x0, 0x1, 0x2, 0x3, 0x6 => return midi.Message{
             .status = status_byte,
             .values = [2]u7{
-                math.cast(u7, first_byte orelse try stream.readByte()) catch return error.InvalidDataByte,
-                try readDataByte(stream),
+                math.cast(u7, first_byte orelse try reader.readByte()) catch return error.InvalidDataByte,
+                try readDataByte(reader),
             },
         },
         0x4, 0x5 => return midi.Message{
             .status = status_byte,
             .values = [2]u7{
-                math.cast(u7, first_byte orelse try stream.readByte()) catch return error.InvalidDataByte,
+                math.cast(u7, first_byte orelse try reader.readByte()) catch return error.InvalidDataByte,
                 0,
             },
         },
@@ -58,15 +58,15 @@ pub fn message(stream: anytype, last_message: ?midi.Message) !midi.Message {
                 0x1, 0x3 => return midi.Message{
                     .status = status_byte,
                     .values = [2]u7{
-                        try readDataByte(stream),
+                        try readDataByte(reader),
                         0,
                     },
                 },
                 0x2 => return midi.Message{
                     .status = status_byte,
                     .values = [2]u7{
-                        try readDataByte(stream),
-                        try readDataByte(stream),
+                        try readDataByte(reader),
+                        try readDataByte(reader),
                     },
                 },
 
@@ -80,9 +80,9 @@ pub fn message(stream: anytype, last_message: ?midi.Message) !midi.Message {
     }
 }
 
-pub fn chunk(stream: anytype) !midi.file.Chunk {
+pub fn chunk(reader: anytype) !midi.file.Chunk {
     var buf: [8]u8 = undefined;
-    try stream.readNoEof(&buf);
+    try reader.readNoEof(&buf);
     return decode.chunkFromBytes(buf);
 }
 
@@ -93,9 +93,9 @@ pub fn chunkFromBytes(bytes: [8]u8) midi.file.Chunk {
     };
 }
 
-pub fn fileHeader(stream: anytype) !midi.file.Header {
+pub fn fileHeader(reader: anytype) !midi.file.Header {
     var buf: [14]u8 = undefined;
-    try stream.readNoEof(&buf);
+    try reader.readNoEof(&buf);
     return decode.fileHeaderFromBytes(buf);
 }
 
@@ -114,10 +114,10 @@ pub fn fileHeaderFromBytes(bytes: [14]u8) !midi.file.Header {
     };
 }
 
-pub fn int(stream: anytype) !u28 {
+pub fn int(reader: anytype) !u28 {
     var res: u28 = 0;
     while (true) {
-        const b = try stream.readByte();
+        const b = try reader.readByte();
         const is_last = @truncate(u1, b >> 7) == 0;
         const value = @truncate(u7, b);
         res = try math.mul(u28, res, math.maxInt(u7) + 1);
@@ -128,23 +128,23 @@ pub fn int(stream: anytype) !u28 {
     }
 }
 
-pub fn metaEvent(stream: anytype) !midi.file.MetaEvent {
+pub fn metaEvent(reader: anytype) !midi.file.MetaEvent {
     return midi.file.MetaEvent{
-        .kind_byte = try stream.readByte(),
-        .len = try decode.int(stream),
+        .kind_byte = try reader.readByte(),
+        .len = try decode.int(reader),
     };
 }
 
-pub fn trackEvent(stream: anytype, last_event: ?midi.file.TrackEvent) !midi.file.TrackEvent {
-    var peek_stream = io.peekStream(1, stream);
-    var in_stream = peek_stream.inStream();
+pub fn trackEvent(reader: anytype, last_event: ?midi.file.TrackEvent) !midi.file.TrackEvent {
+    var peek_reader = io.peekStream(1, reader);
+    var in_reader = peek_reader.reader();
 
-    const delta_time = try decode.int(&in_stream);
-    const first_byte = try in_stream.readByte();
+    const delta_time = try decode.int(&in_reader);
+    const first_byte = try in_reader.readByte();
     if (first_byte == 0xFF) {
         return midi.file.TrackEvent{
             .delta_time = delta_time,
-            .kind = midi.file.TrackEvent.Kind{ .MetaEvent = try decode.metaEvent(&in_stream) },
+            .kind = midi.file.TrackEvent.Kind{ .MetaEvent = try decode.metaEvent(&in_reader) },
         };
     }
 
@@ -153,16 +153,16 @@ pub fn trackEvent(stream: anytype, last_event: ?midi.file.TrackEvent) !midi.file
         .MetaEvent => null,
     } else null;
 
-    peek_stream.putBackByte(first_byte) catch unreachable;
+    peek_reader.putBackByte(first_byte) catch unreachable;
     return midi.file.TrackEvent{
         .delta_time = delta_time,
-        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try decode.message(&in_stream, last_midi_event) },
+        .kind = midi.file.TrackEvent.Kind{ .MidiEvent = try decode.message(&in_reader, last_midi_event) },
     };
 }
 
-/// Decodes a midi file from a stream. Caller owns the returned value
+/// Decodes a midi file from a reader. Caller owns the returned value
 ///  (see: `midi.File.deinit`).
-pub fn file(stream: anytype, allocator: *mem.Allocator) !midi.File {
+pub fn file(reader: anytype, allocator: *mem.Allocator) !midi.File {
     var chunks = std.ArrayList(midi.File.FileChunk).init(allocator);
     errdefer {
         (midi.File{
@@ -172,20 +172,20 @@ pub fn file(stream: anytype, allocator: *mem.Allocator) !midi.File {
         }).deinit(allocator);
     }
 
-    const header = try decode.fileHeader(stream);
+    const header = try decode.fileHeader(reader);
     const header_data = try allocator.alloc(u8, header.chunk.len - midi.file.Header.size);
     errdefer allocator.free(header_data);
 
-    try stream.readNoEof(header_data);
+    try reader.readNoEof(header_data);
     while (true) {
-        const c = decode.chunk(stream) catch |err| switch (err) {
+        const c = decode.chunk(reader) catch |err| switch (err) {
             error.EndOfStream => break,
             else => |e| return e,
         };
 
         const chunk_bytes = try allocator.alloc(u8, c.len);
         errdefer allocator.free(chunk_bytes);
-        try stream.readNoEof(chunk_bytes);
+        try reader.readNoEof(chunk_bytes);
         try chunks.append(.{
             .kind = c.kind,
             .bytes = chunk_bytes,

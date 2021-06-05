@@ -1,12 +1,12 @@
-const std = @import("std");
 const midi = @import("midi");
+const std = @import("std");
 
 pub fn main() !void {
-    const stdin = std.io.getStdIn().inStream();
+    const stdin = std.io.getStdIn().reader();
 
     const header = try midi.decode.fileHeader(stdin);
     std.debug.warn("file_header:\n", .{});
-    std.debug.warn("  chunk_type: {}\n", .{header.chunk.kind});
+    std.debug.warn("  chunk_type: {s}\n", .{header.chunk.kind});
     std.debug.warn("  chunk_len:  {}\n", .{header.chunk.len});
     std.debug.warn("  format:     {}\n", .{header.format});
     std.debug.warn("  tracks:     {}\n", .{header.tracks});
@@ -24,7 +24,7 @@ pub fn main() !void {
         };
 
         std.debug.warn("chunk:\n", .{});
-        std.debug.warn("  type: {}\n", .{chunk.kind});
+        std.debug.warn("  type: {s}\n", .{chunk.kind});
         std.debug.warn("  len:  {}\n", .{chunk.len});
 
         // If our chunk isn't a track header, we just skip it.
@@ -48,9 +48,9 @@ pub fn main() !void {
                     const data = buf[0..meta_event.len];
                     try stdin.readNoEof(data);
 
-                    std.debug.warn(" {:>20} {:>6}", .{ metaEventKindToStr(meta_event.kind()), meta_event.len });
+                    std.debug.warn(" {s:>20} {:>6}", .{ metaEventKindToStr(meta_event.kind()), meta_event.len });
                     switch (meta_event.kind()) {
-                        .Luric, .InstrumentName, .TrackName => std.debug.warn(" {}\n", .{data}),
+                        .Luric, .InstrumentName, .TrackName => std.debug.warn(" {s}\n", .{data}),
                         .EndOfTrack => {
                             std.debug.warn("\n", .{});
                             break;
@@ -59,7 +59,7 @@ pub fn main() !void {
                     }
                 },
                 .MidiEvent => |midi_event| {
-                    std.debug.warn(" {:>20}", .{midiEventKindToStr(midi_event.kind())});
+                    std.debug.warn(" {s:>20}", .{midiEventKindToStr(midi_event.kind())});
                     if (midi_event.channel()) |channel|
                         std.debug.warn(" {:>6}", .{channel});
                     std.debug.warn(" {:>3} {:>3}\n", .{ midi_event.values[0], midi_event.values[1] });
