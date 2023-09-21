@@ -120,7 +120,7 @@ pub fn file(writer: anytype, f: midi.File) !void {
     for (f.chunks) |c| {
         try writer.writeAll(&encode.chunkToBytes(.{
             .kind = c.kind,
-            .len = @as(u32, @intCast(c.bytes.len)),
+            .len = @intCast(c.bytes.len),
         }));
         try writer.writeAll(c.bytes);
     }
