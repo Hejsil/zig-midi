@@ -119,7 +119,7 @@ pub fn int(reader: anytype) !u28 {
     while (true) {
         const b = try reader.readByte();
         const is_last = @as(u1, @truncate(b >> 7)) == 0;
-        const value = @as(u7, @truncate(b));
+        const value: u7 = @truncate(b);
         res = try math.mul(u28, res, math.maxInt(u7) + 1);
         res = try math.add(u28, res, value);
 
