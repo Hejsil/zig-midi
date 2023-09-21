@@ -90,8 +90,8 @@ pub const Message = struct {
 
     pub fn setValue(message: *Message, v: u14) void {
         message.values = .{
-            @as(u7, @truncate(v >> 7)),
-            @as(u7, @truncate(v)),
+            @truncate(v >> 7),
+            @truncate(v),
         };
     }
 
