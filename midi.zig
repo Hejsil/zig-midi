@@ -52,7 +52,7 @@ pub const Message = struct {
 
     pub fn channel(message: Message) ?u4 {
         const _kind = message.kind();
-        const _channel = @as(u4, @truncate(message.status));
+        const _channel: u4 = @truncate(message.status);
         switch (_kind) {
             // Channel events
             .NoteOff,
