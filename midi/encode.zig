@@ -76,7 +76,7 @@ pub fn int(writer: anytype, i: u28) !void {
         const shifted = tmp >> (7 * (byteCount - 1));
 
         if (is_first) {
-            try writer.writeByte(@as(u8, @truncate(shifted)));
+            try writer.writeByte(@truncate(shifted));
             is_first = false;
         } else {
             try writer.writeByte(@as(u8, shifted) | (1 << 7));
@@ -109,10 +109,10 @@ pub fn file(writer: anytype, f: midi.File) !void {
     try writer.writeAll(&encode.fileHeaderToBytes(.{
         .chunk = .{
             .kind = midi.file.Chunk.file_header.*,
-            .len = @as(u32, @intCast(midi.file.Header.size + f.header_data.len)),
+            .len = @intCast(midi.file.Header.size + f.header_data.len),
         },
         .format = f.format,
-        .tracks = @as(u16, @intCast(f.chunks.len)),
+        .tracks = @intCast(f.chunks.len),
         .division = f.division,
     }));
     try writer.writeAll(f.header_data);
@@ -120,7 +120,7 @@ pub fn file(writer: anytype, f: midi.File) !void {
     for (f.chunks) |c| {
         try writer.writeAll(&encode.chunkToBytes(.{
             .kind = c.kind,
-            .len = @as(u32, @intCast(c.bytes.len)),
+            .len = @intCast(c.bytes.len),
         }));
         try writer.writeAll(c.bytes);
     }

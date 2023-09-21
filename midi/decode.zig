@@ -10,7 +10,7 @@ const decode = @This();
 
 fn statusByte(b: u8) ?u7 {
     if (@as(u1, @truncate(b >> 7)) != 0)
-        return @as(u7, @truncate(b));
+        return @truncate(b);
 
     return null;
 }
@@ -31,8 +31,8 @@ pub fn message(reader: anytype, last_message: ?midi.Message) !midi.Message {
         break :blk m.status;
     } else return error.InvalidMessage;
 
-    const kind = @as(u3, @truncate(status_byte >> 4));
-    const channel = @as(u4, @truncate(status_byte));
+    const kind: u3 = @truncate(status_byte >> 4);
+    const channel: u4 = @truncate(status_byte);
     switch (kind) {
         0x0, 0x1, 0x2, 0x3, 0x6 => return midi.Message{
             .status = status_byte,
@@ -119,7 +119,7 @@ pub fn int(reader: anytype) !u28 {
     while (true) {
         const b = try reader.readByte();
         const is_last = @as(u1, @truncate(b >> 7)) == 0;
-        const value = @as(u7, @truncate(b));
+        const value: u7 = @truncate(b);
         res = try math.mul(u28, res, math.maxInt(u7) + 1);
         res = try math.add(u28, res, value);
 
