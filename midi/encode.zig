@@ -112,7 +112,7 @@ pub fn file(writer: anytype, f: midi.File) !void {
             .len = @as(u32, @intCast(midi.file.Header.size + f.header_data.len)),
         },
         .format = f.format,
-        .tracks = @as(u16, @intCast(f.chunks.len)),
+        .tracks = @intCast(f.chunks.len),
         .division = f.division,
     }));
     try writer.writeAll(f.header_data);
