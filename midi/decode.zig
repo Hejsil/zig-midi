@@ -31,8 +31,8 @@ pub fn message(reader: anytype, last_message: ?midi.Message) !midi.Message {
         break :blk m.status;
     } else return error.InvalidMessage;
 
-    const kind = @as(u3, @truncate(status_byte >> 4));
-    const channel = @as(u4, @truncate(status_byte));
+    const kind: u3 = @truncate(status_byte >> 4);
+    const channel: u4 = @truncate(status_byte);
     switch (kind) {
         0x0, 0x1, 0x2, 0x3, 0x6 => return midi.Message{
             .status = status_byte,
