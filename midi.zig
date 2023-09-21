@@ -21,8 +21,8 @@ pub const Message = struct {
     values: [2]u7,
 
     pub fn kind(message: Message) Kind {
-        const _kind = @as(u3, @truncate(message.status >> 4));
-        const _channel = @as(u4, @truncate(message.status));
+        const _kind: u3 = @truncate(message.status >> 4);
+        const _channel: u4 = @truncate(message.status);
         return switch (_kind) {
             0x0 => Kind.NoteOff,
             0x1 => Kind.NoteOn,
