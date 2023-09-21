@@ -9,6 +9,10 @@ const decode = midi.decode;
 const encode = midi.encode;
 const file = midi.file;
 
+test {
+    std.testing.refAllDecls(@This());
+}
+
 test "midi.decode/encode.message" {
     try testMessage("\x80\x00\x00" ++
         "\x7F\x7F" ++
@@ -582,8 +586,9 @@ test "midi.decode/encode.file" {
 fn testFile(bytes: []const u8) !void {
     var out_buf: [1024]u8 = undefined;
     var fb_writer = io.fixedBufferStream(&out_buf);
+    var fb_reader = io.fixedBufferStream(bytes);
     const writer = fb_writer.writer();
-    const reader = io.fixedBufferStream(bytes).reader();
+    const reader = fb_reader.reader();
     const allocator = testing.allocator;
 
     const actual = try decode.file(reader, allocator);
@@ -598,8 +603,9 @@ fn testMessage(bytes: []const u8, results: []const midi.Message) !void {
     var last: ?midi.Message = null;
     var out_buf: [1024]u8 = undefined;
     var fb_writer = io.fixedBufferStream(&out_buf);
+    var fb_reader = io.fixedBufferStream(bytes);
     const writer = fb_writer.writer();
-    const reader = io.fixedBufferStream(bytes).reader();
+    const reader = fb_reader.reader();
     for (results) |expected| {
         const actual = try decode.message(reader, last);
         try encode.message(writer, last, actual);
@@ -635,8 +641,9 @@ fn testInt(bytes: []const u8, results: []const u28) !void {
 fn testMetaEvent(bytes: []const u8, results: []const midi.file.MetaEvent) !void {
     var out_buf: [1024]u8 = undefined;
     var fb_writer = io.fixedBufferStream(&out_buf);
+    var fb_reader = io.fixedBufferStream(bytes);
     const writer = fb_writer.writer();
-    const reader = io.fixedBufferStream(bytes).reader();
+    const reader = fb_reader.reader();
     for (results) |expected| {
         const actual = try decode.metaEvent(reader);
         try encode.metaEvent(writer, actual);
@@ -651,8 +658,9 @@ fn testTrackEvent(bytes: []const u8, results: []const midi.file.TrackEvent) !voi
     var last: ?midi.file.TrackEvent = null;
     var out_buf: [1024]u8 = undefined;
     var fb_writer = io.fixedBufferStream(&out_buf);
+    var fb_reader = io.fixedBufferStream(bytes);
     const writer = fb_writer.writer();
-    const reader = io.fixedBufferStream(bytes).reader();
+    const reader = fb_reader.reader();
     for (results) |expected| {
         const actual = try decode.trackEvent(reader, last);
         try encode.trackEvent(writer, last, actual);

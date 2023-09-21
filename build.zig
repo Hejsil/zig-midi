@@ -5,33 +5,37 @@ const Builder = std.build.Builder;
 const Mode = builtin.Mode;
 
 pub fn build(b: *Builder) void {
-    const test_all_step = b.step("test", "Run all tests in all modes.");
-    inline for (@typeInfo(std.builtin.Mode).Enum.fields) |field| {
-        const test_mode = @field(std.builtin.Mode, field.name);
-        const mode_str = @tagName(test_mode);
+    const clap_mod = b.addModule("clap", .{ .source_file = .{ .path = "clap.zig" } });
 
-        const tests = b.addTest("midi.zig");
-        tests.setBuildMode(test_mode);
-        tests.setNamePrefix(mode_str ++ " ");
+    const optimize = b.standardOptimizeOption(.{});
+    const target = b.standardTargetOptions(.{});
 
-        const test_step = b.step("test-" ++ mode_str, "Run all tests in " ++ mode_str ++ ".");
-        test_step.dependOn(&tests.step);
-        test_all_step.dependOn(test_step);
-    }
+    const test_step = b.step("test", "Run all tests in all modes.");
+    const tests = b.addTest(.{
+        .root_source_file = .{ .path = "midi.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_tests = b.addRunArtifact(tests);
+    test_step.dependOn(&run_tests.step);
 
     const example_step = b.step("examples", "Build examples");
-    inline for ([_][]const u8{
+    for ([_][]const u8{
         "midi_file_to_text_stream",
     }) |example_name| {
-        const example = b.addExecutable(example_name, "example/" ++ example_name ++ ".zig");
-        example.addPackagePath("midi", "midi.zig");
-        example.install();
+        const example = b.addExecutable(.{
+            .name = example_name,
+            .root_source_file = .{ .path = b.fmt("example/{s}.zig", .{example_name}) },
+            .target = target,
+            .optimize = optimize,
+        });
+        const install_example = b.addInstallArtifact(example, .{});
+        example.addModule("midi", clap_mod);
         example_step.dependOn(&example.step);
+        example_step.dependOn(&install_example.step);
     }
 
     const all_step = b.step("all", "Build everything and runs all tests");
-    all_step.dependOn(test_all_step);
+    all_step.dependOn(test_step);
     all_step.dependOn(example_step);
-
-    b.default_step.dependOn(all_step);
 }

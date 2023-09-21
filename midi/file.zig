@@ -1,7 +1,13 @@
+const decode = @import("./decode.zig");
 const midi = @import("../midi.zig");
 const std = @import("std");
 
+const io = std.io;
 const mem = std.mem;
+
+test {
+    std.testing.refAllDecls(@This());
+}
 
 pub const Header = struct {
     chunk: Chunk,
@@ -85,7 +91,7 @@ pub const File = struct {
         bytes: []const u8,
     };
 
-    pub fn deinit(file: File, allocator: *mem.Allocator) void {
+    pub fn deinit(file: File, allocator: mem.Allocator) void {
         for (file.chunks) |chunk|
             allocator.free(chunk.bytes);
         allocator.free(file.chunks);
@@ -112,8 +118,9 @@ pub const TrackIterator = struct {
         it.last_event = event;
 
         const start = it.stream.pos;
-        switch (event.kind) {
-            .MetaEvent => |meta_event| {
+
+        const end = switch (event.kind) {
+            .MetaEvent => |meta_event| blk: {
                 it.stream.pos += meta_event.len;
                 break :blk it.stream.pos;
             },
@@ -124,10 +131,11 @@ pub const TrackIterator = struct {
                 }
                 break :blk it.stream.pos;
             },
-        }
+        };
+
         return Result{
             .event = event,
-            .data = stream.buffer[start..end],
+            .data = s.buffer[start..end],
         };
     }
 };

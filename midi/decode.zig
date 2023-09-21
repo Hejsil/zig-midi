@@ -8,15 +8,19 @@ const mem = std.mem;
 
 const decode = @This();
 
+test {
+    std.testing.refAllDecls(@This());
+}
+
 fn statusByte(b: u8) ?u7 {
-    if (@truncate(u1, b >> 7) != 0)
-        return @truncate(u7, b);
+    if (@as(u1, @truncate(b >> 7)) != 0)
+        return @truncate(b);
 
     return null;
 }
 
 fn readDataByte(reader: anytype) !u7 {
-    return math.cast(u7, try reader.readByte()) catch return error.InvalidDataByte;
+    return math.cast(u7, try reader.readByte()) orelse return error.InvalidDataByte;
 }
 
 pub fn message(reader: anytype, last_message: ?midi.Message) !midi.Message {
@@ -31,20 +35,22 @@ pub fn message(reader: anytype, last_message: ?midi.Message) !midi.Message {
         break :blk m.status;
     } else return error.InvalidMessage;
 
-    const kind = @truncate(u3, status_byte >> 4);
-    const channel = @truncate(u4, status_byte);
+    const kind: u3 = @truncate(status_byte >> 4);
+    const channel: u4 = @truncate(status_byte);
     switch (kind) {
         0x0, 0x1, 0x2, 0x3, 0x6 => return midi.Message{
             .status = status_byte,
             .values = [2]u7{
-                math.cast(u7, first_byte orelse try reader.readByte()) catch return error.InvalidDataByte,
+                math.cast(u7, first_byte orelse try reader.readByte()) orelse
+                    return error.InvalidDataByte,
                 try readDataByte(reader),
             },
         },
         0x4, 0x5 => return midi.Message{
             .status = status_byte,
             .values = [2]u7{
-                math.cast(u7, first_byte orelse try reader.readByte()) catch return error.InvalidDataByte,
+                math.cast(u7, first_byte orelse try reader.readByte()) orelse
+                    return error.InvalidDataByte,
                 0,
             },
         },
@@ -118,8 +124,8 @@ pub fn int(reader: anytype) !u28 {
     var res: u28 = 0;
     while (true) {
         const b = try reader.readByte();
-        const is_last = @truncate(u1, b >> 7) == 0;
-        const value = @truncate(u7, b);
+        const is_last = @as(u1, @truncate(b >> 7)) == 0;
+        const value: u7 = @truncate(b);
         res = try math.mul(u28, res, math.maxInt(u7) + 1);
         res = try math.add(u28, res, value);
 
@@ -162,14 +168,12 @@ pub fn trackEvent(reader: anytype, last_event: ?midi.file.TrackEvent) !midi.file
 
 /// Decodes a midi file from a reader. Caller owns the returned value
 ///  (see: `midi.File.deinit`).
-pub fn file(reader: anytype, allocator: *mem.Allocator) !midi.File {
+pub fn file(reader: anytype, allocator: mem.Allocator) !midi.File {
     var chunks = std.ArrayList(midi.File.FileChunk).init(allocator);
     errdefer {
-        (midi.File{
-            .format = 0,
-            .division = 0,
-            .chunks = chunks.toOwnedSlice(),
-        }).deinit(allocator);
+        for (chunks.items) |c|
+            allocator.free(c.bytes);
+        chunks.deinit();
     }
 
     const header = try decode.fileHeader(reader);
@@ -196,6 +200,6 @@ pub fn file(reader: anytype, allocator: *mem.Allocator) !midi.File {
         .format = header.format,
         .division = header.division,
         .header_data = header_data,
-        .chunks = chunks.toOwnedSlice(),
+        .chunks = try chunks.toOwnedSlice(),
     };
 }
