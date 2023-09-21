@@ -63,18 +63,25 @@ pub fn fileHeaderToBytes(header: midi.file.Header) [14]u8 {
 
 pub fn int(writer: anytype, i: u28) !void {
     var tmp = i;
-    var is_first = true;
-    var buf: [4]u8 = undefined;
-    var fbs = io.fixedBufferStream(&buf).writer();
+    var byteCount: u8 = 1; // At least 1  character
 
-    // TODO: Can we find a way to not encode this in reverse order and then flipping the bytes?
-    while (tmp != 0 or is_first) : (is_first = false) {
-        fbs.writeByte(@truncate(u7, tmp) | (@as(u8, 1 << 7) * @boolToInt(!is_first))) catch
-            unreachable;
-        tmp >>= 7;
+    while (tmp >= 0x80) : (tmp >>= 7) {
+        byteCount += 1;
     }
-    mem.reverse(u8, fbs.context.getWritten());
-    try writer.writeAll(fbs.context.getWritten());
+
+    tmp = i;
+    var is_first = true;
+
+    while (byteCount > 0) : (byteCount -= 1) {
+        const shifted = tmp >> (7 * (byteCount - 1));
+
+        if (is_first) {
+            try writer.writeByte(@as(u8, @truncate(shifted)));
+            is_first = false;
+        } else {
+            try writer.writeByte(@as(u8, shifted) | (1 << 7));
+        }
+    }
 }
 
 pub fn metaEvent(writer: anytype, event: midi.file.MetaEvent) !void {
@@ -102,10 +109,10 @@ pub fn file(writer: anytype, f: midi.File) !void {
     try writer.writeAll(&encode.fileHeaderToBytes(.{
         .chunk = .{
             .kind = midi.file.Chunk.file_header.*,
-            .len = @intCast(u32, midi.file.Header.size + f.header_data.len),
+            .len = @as(u32, @intCast(midi.file.Header.size + f.header_data.len)),
         },
         .format = f.format,
-        .tracks = @intCast(u16, f.chunks.len),
+        .tracks = @as(u16, @intCast(f.chunks.len)),
         .division = f.division,
     }));
     try writer.writeAll(f.header_data);
@@ -113,7 +120,7 @@ pub fn file(writer: anytype, f: midi.File) !void {
     for (f.chunks) |c| {
         try writer.writeAll(&encode.chunkToBytes(.{
             .kind = c.kind,
-            .len = @intCast(u32, c.bytes.len),
+            .len = @as(u32, @intCast(c.bytes.len)),
         }));
         try writer.writeAll(c.bytes);
     }

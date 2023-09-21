@@ -1,6 +1,8 @@
 const midi = @import("../midi.zig");
 const std = @import("std");
+const decode = @import("./decode.zig");
 
+const io = std.io;
 const mem = std.mem;
 
 pub const Header = struct {
@@ -112,8 +114,9 @@ pub const TrackIterator = struct {
         it.last_event = event;
 
         const start = it.stream.pos;
-        switch (event.kind) {
-            .MetaEvent => |meta_event| {
+
+        var end: usize = switch (event.kind) {
+            .MetaEvent => |meta_event| blk: {
                 it.stream.pos += meta_event.len;
                 break :blk it.stream.pos;
             },
@@ -124,10 +127,11 @@ pub const TrackIterator = struct {
                 }
                 break :blk it.stream.pos;
             },
-        }
+        };
+
         return Result{
             .event = event,
-            .data = stream.buffer[start..end],
+            .data = s.buffer[start..end],
         };
     }
 };
