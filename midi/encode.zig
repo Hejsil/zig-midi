@@ -109,7 +109,7 @@ pub fn file(writer: anytype, f: midi.File) !void {
     try writer.writeAll(&encode.fileHeaderToBytes(.{
         .chunk = .{
             .kind = midi.file.Chunk.file_header.*,
-            .len = @as(u32, @intCast(midi.file.Header.size + f.header_data.len)),
+            .len = @intCast(midi.file.Header.size + f.header_data.len),
         },
         .format = f.format,
         .tracks = @intCast(f.chunks.len),
