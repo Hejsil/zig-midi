@@ -115,7 +115,7 @@ pub const TrackIterator = struct {
 
         const start = it.stream.pos;
 
-        var end: usize = switch (event.kind) {
+        const end = switch (event.kind) {
             .MetaEvent => |meta_event| blk: {
                 it.stream.pos += meta_event.len;
                 break :blk it.stream.pos;
