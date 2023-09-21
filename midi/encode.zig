@@ -76,7 +76,7 @@ pub fn int(writer: anytype, i: u28) !void {
         const shifted = tmp >> (7 * (byteCount - 1));
 
         if (is_first) {
-            try writer.writeByte(@as(u8, @truncate(shifted)));
+            try writer.writeByte(@truncate(shifted));
             is_first = false;
         } else {
             try writer.writeByte(@as(u8, shifted) | (1 << 7));
