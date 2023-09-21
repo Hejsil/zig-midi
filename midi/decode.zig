@@ -10,7 +10,7 @@ const decode = @This();
 
 fn statusByte(b: u8) ?u7 {
     if (@as(u1, @truncate(b >> 7)) != 0)
-        return @as(u7, @truncate(b));
+        return @truncate(b);
 
     return null;
 }
