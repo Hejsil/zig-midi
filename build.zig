@@ -5,7 +5,7 @@ const Builder = std.build.Builder;
 const Mode = builtin.Mode;
 
 pub fn build(b: *Builder) void {
-    const clap_mod = b.addModule("clap", .{ .source_file = .{ .path = "clap.zig" } });
+    const midi_mod = b.addModule("midi", .{ .source_file = .{ .path = "midi.zig" } });
 
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
@@ -30,7 +30,7 @@ pub fn build(b: *Builder) void {
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
-        example.addModule("midi", clap_mod);
+        example.addModule("midi", midi_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
