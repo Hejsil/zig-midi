@@ -1,15 +1,14 @@
 const std = @import("std");
-
+const test_file = @import("midi/test.zig");
 const mem = std.mem;
+const midi = @This();
 
 pub const decode = @import("midi/decode.zig");
 pub const encode = @import("midi/encode.zig");
 pub const file = @import("midi/file.zig");
 
 test "midi" {
-    _ = @import("midi/test.zig");
-    _ = decode;
-    _ = file;
+    std.testing.refAllDecls(@This());
 }
 
 pub const File = file.File;
@@ -19,8 +18,8 @@ pub const Message = struct {
     values: [2]u7,
 
     pub fn kind(message: Message) Kind {
-        const _kind = @truncate(u3, message.status >> 4);
-        const _channel = @truncate(u4, message.status);
+        const _kind: u3 = @truncate(message.status >> 4);
+        const _channel: u4 = @truncate(message.status);
         return switch (_kind) {
             0x0 => Kind.NoteOff,
             0x1 => Kind.NoteOn,
@@ -50,7 +49,7 @@ pub const Message = struct {
 
     pub fn channel(message: Message) ?u4 {
         const _kind = message.kind();
-        const _channel = @truncate(u4, message.status);
+        const _channel = @as(u4, @truncate(message.status));
         switch (_kind) {
             // Channel events
             .NoteOff,
@@ -88,8 +87,8 @@ pub const Message = struct {
 
     pub fn setValue(message: *Message, v: u14) void {
         message.values = .{
-            @truncate(u7, v >> 7),
-            @truncate(u7, v),
+            @truncate(v >> 7),
+            @truncate(v),
         };
     }
 
