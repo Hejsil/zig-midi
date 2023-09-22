@@ -5,12 +5,12 @@ pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
 
     const header = try midi.decode.fileHeader(stdin);
-    std.debug.warn("file_header:\n", .{});
-    std.debug.warn("  chunk_type: {s}\n", .{header.chunk.kind});
-    std.debug.warn("  chunk_len:  {}\n", .{header.chunk.len});
-    std.debug.warn("  format:     {}\n", .{header.format});
-    std.debug.warn("  tracks:     {}\n", .{header.tracks});
-    std.debug.warn("  division:   {}\n", .{header.division});
+    std.debug.print("file_header:\n", .{});
+    std.debug.print("  chunk_type: {s}\n", .{header.chunk.kind});
+    std.debug.print("  chunk_len:  {}\n", .{header.chunk.len});
+    std.debug.print("  format:     {}\n", .{header.format});
+    std.debug.print("  tracks:     {}\n", .{header.tracks});
+    std.debug.print("  division:   {}\n", .{header.division});
 
     // The midi standard says that we should respect the headers size, even if it
     // is bigger than nessesary. We therefor need to figure out what to do with the
@@ -23,9 +23,9 @@ pub fn main() !void {
             else => |e| return e,
         };
 
-        std.debug.warn("chunk:\n", .{});
-        std.debug.warn("  type: {s}\n", .{chunk.kind});
-        std.debug.warn("  len:  {}\n", .{chunk.len});
+        std.debug.print("chunk:\n", .{});
+        std.debug.print("  type: {s}\n", .{chunk.kind});
+        std.debug.print("  len:  {}\n", .{chunk.len});
 
         // If our chunk isn't a track header, we just skip it.
         if (!std.mem.eql(u8, &chunk.kind, midi.file.Chunk.track_header)) {
@@ -41,28 +41,28 @@ pub fn main() !void {
             const event = try midi.decode.trackEvent(stdin, last_event);
             last_event = event;
 
-            std.debug.warn("  {:>6}", .{event.delta_time});
+            std.debug.print("  {:>6}", .{event.delta_time});
             switch (event.kind) {
                 .MetaEvent => |meta_event| {
                     var buf: [1024]u8 = undefined;
                     const data = buf[0..meta_event.len];
                     try stdin.readNoEof(data);
 
-                    std.debug.warn(" {s:>20} {:>6}", .{ metaEventKindToStr(meta_event.kind()), meta_event.len });
+                    std.debug.print(" {s:>20} {:>6}", .{ metaEventKindToStr(meta_event.kind()), meta_event.len });
                     switch (meta_event.kind()) {
-                        .Luric, .InstrumentName, .TrackName => std.debug.warn(" {s}\n", .{data}),
+                        .Luric, .InstrumentName, .TrackName => std.debug.print(" {s}\n", .{data}),
                         .EndOfTrack => {
-                            std.debug.warn("\n", .{});
+                            std.debug.print("\n", .{});
                             break;
                         },
-                        else => std.debug.warn("\n", .{}),
+                        else => std.debug.print("\n", .{}),
                     }
                 },
                 .MidiEvent => |midi_event| {
-                    std.debug.warn(" {s:>20}", .{midiEventKindToStr(midi_event.kind())});
+                    std.debug.print(" {s:>20}", .{midiEventKindToStr(midi_event.kind())});
                     if (midi_event.channel()) |channel|
-                        std.debug.warn(" {:>6}", .{channel});
-                    std.debug.warn(" {:>3} {:>3}\n", .{ midi_event.values[0], midi_event.values[1] });
+                        std.debug.print(" {:>6}", .{channel});
+                    std.debug.print(" {:>3} {:>3}\n", .{ midi_event.values[0], midi_event.values[1] });
 
                     if (midi_event.kind() == .ExclusiveStart) {
                         while ((try stdin.readByte()) != 0xF7) {}
