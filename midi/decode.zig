@@ -95,7 +95,7 @@ pub fn chunk(reader: anytype) !midi.file.Chunk {
 pub fn chunkFromBytes(bytes: [8]u8) midi.file.Chunk {
     return midi.file.Chunk{
         .kind = bytes[0..4].*,
-        .len = mem.readIntBig(u32, bytes[4..8]),
+        .len = mem.readInt(u32, bytes[4..8], .big),
     };
 }
 
@@ -114,9 +114,9 @@ pub fn fileHeaderFromBytes(bytes: [14]u8) !midi.file.Header {
 
     return midi.file.Header{
         .chunk = _chunk,
-        .format = mem.readIntBig(u16, bytes[8..10]),
-        .tracks = mem.readIntBig(u16, bytes[10..12]),
-        .division = mem.readIntBig(u16, bytes[12..14]),
+        .format = mem.readInt(u16, bytes[8..10], .big),
+        .tracks = mem.readInt(u16, bytes[10..12], .big),
+        .division = mem.readInt(u16, bytes[12..14], .big),
     };
 }
 
