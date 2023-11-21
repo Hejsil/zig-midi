@@ -114,7 +114,7 @@ pub const TrackIterator = struct {
 
     pub fn next(it: *TrackIterator) ?Result {
         const s = it.stream.inStream();
-        var event = decode.trackEvent(s, it.last_event) catch return null;
+        const event = decode.trackEvent(s, it.last_event) catch return null;
         it.last_event = event;
 
         const start = it.stream.pos;
