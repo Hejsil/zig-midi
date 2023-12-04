@@ -51,14 +51,14 @@ pub fn message(writer: anytype, last_message: ?midi.Message, msg: midi.Message) 
 
 pub fn chunkToBytes(_chunk: midi.file.Chunk) [8]u8 {
     var res: [8]u8 = undefined;
-    mem.copy(u8, res[0..4], &_chunk.kind);
+    @memcpy(res[0..4], &_chunk.kind);
     mem.writeInt(u32, res[4..8], _chunk.len, .big);
     return res;
 }
 
 pub fn fileHeaderToBytes(header: midi.file.Header) [14]u8 {
     var res: [14]u8 = undefined;
-    mem.copy(u8, res[0..8], &chunkToBytes(header.chunk));
+    @memcpy(res[0..8], &chunkToBytes(header.chunk));
     mem.writeInt(u16, res[8..10], header.format, .big);
     mem.writeInt(u16, res[10..12], header.tracks, .big);
     mem.writeInt(u16, res[12..14], header.division, .big);
