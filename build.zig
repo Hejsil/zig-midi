@@ -1,11 +1,10 @@
 const builtin = @import("builtin");
 const std = @import("std");
 
-const Builder = std.build.Builder;
 const Mode = builtin.Mode;
 
-pub fn build(b: *Builder) void {
-    const midi_mod = b.addModule("midi", .{ .source_file = .{ .path = "midi.zig" } });
+pub fn build(b: *std.Build) void {
+    const midi_mod = b.addModule("midi", .{ .root_source_file = .{ .path = "midi.zig" } });
 
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
@@ -30,7 +29,7 @@ pub fn build(b: *Builder) void {
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
-        example.addModule("midi", midi_mod);
+        example.root_module.addImport("midi", midi_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
